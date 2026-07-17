@@ -2151,11 +2151,11 @@ body {
 html[data-theme="dark"] {
   --bg: #141412;
   --ink: #f3f3ee;
-  --muted: #9a9a93;
+  --muted: #c4c4bc;
   --line: #2c2c28;
   --panel: #1c1c18;
   --green: #d1d1ca;
-  --green-deep: #b0b0a9;
+  --green-deep: #d8d8d1;
   --green-soft: rgba(243, 243, 238, 0.1);
   --black: #f3f3ee;
   --card: #1a1a16;
@@ -2281,8 +2281,15 @@ html[data-theme="dark"] .submit-button:disabled {
 
 html[data-theme="dark"] input::placeholder,
 html[data-theme="dark"] textarea::placeholder {
-  color: #9a9a93;
+  color: #c4c4bc;
   opacity: 1;
+}
+
+html[data-theme="dark"] .question-card-tools button,
+html[data-theme="dark"] .key-visibility-toggle,
+html[data-theme="dark"] .host-key svg,
+html[data-theme="dark"] .inline-field svg {
+  color: var(--muted);
 }
 
 html[data-theme="dark"] .entry-card:hover {
