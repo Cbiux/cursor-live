@@ -515,13 +515,69 @@ button {
 }
 
 .word-cloud span {
+  display: inline-block;
   color: #333;
   font-weight: 540;
   letter-spacing: -0.04em;
+  cursor: default;
+  transition:
+    color 180ms ease,
+    filter 180ms ease,
+    transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: cloud-word-in 420ms ease both;
 }
 
 .word-cloud span.featured {
   color: var(--green-deep);
+}
+
+.word-cloud span.repeated {
+  font-weight: 760;
+}
+
+.word-cloud span.tilt-left-2 {
+  transform: rotate(-9deg);
+}
+
+.word-cloud span.tilt-left-1 {
+  transform: rotate(-4deg);
+}
+
+.word-cloud span.tilt-right-1 {
+  transform: rotate(4deg);
+}
+
+.word-cloud span.tilt-right-2 {
+  transform: rotate(9deg);
+}
+
+.word-cloud span.tilt-none {
+  transform: rotate(0);
+}
+
+.word-cloud span:hover {
+  z-index: 2;
+  color: var(--ink);
+  filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.14));
+  transform: rotate(0) scale(1.18);
+}
+
+@keyframes cloud-word-in {
+  from {
+    opacity: 0;
+    filter: blur(3px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .word-cloud span {
+    animation: none;
+    transition: none;
+  }
 }
 
 .waiting-results {

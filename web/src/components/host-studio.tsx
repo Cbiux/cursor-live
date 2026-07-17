@@ -26,6 +26,9 @@ import {
   QUESTION_TYPE_LABELS,
   cloneQuestions,
   createEmptyQuestion,
+  DEFAULT_LOBBY_HEADLINE,
+  DEFAULT_LOBBY_PROMPT,
+  DEFAULT_ROOM_TITLE,
   defaultQuestions,
   needsOptions,
   type Question,
@@ -66,7 +69,9 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
   const code = useMemo(() => buildCursorRoomCode(roomNumber), [roomNumber]);
   const { data, error, refresh } = useRoom(code, 2500);
   const [hostKey, setHostKey] = useState("");
-  const [title, setTitle] = useState("Cursor Live");
+  const [title, setTitle] = useState(DEFAULT_ROOM_TITLE);
+  const [lobbyHeadline, setLobbyHeadline] = useState(DEFAULT_LOBBY_HEADLINE);
+  const [lobbyPrompt, setLobbyPrompt] = useState(DEFAULT_LOBBY_PROMPT);
   const [questions, setQuestions] = useState<Question[]>(
     cloneQuestions(defaultQuestions),
   );
@@ -97,7 +102,9 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
     const timer = window.setTimeout(() => {
       hydratedCodeRef.current = code;
       setDirty(false);
-      setTitle(data.room.title || "Mi experiencia en vivo");
+      setTitle(data.room.title || DEFAULT_ROOM_TITLE);
+      setLobbyHeadline(data.room.lobbyHeadline || DEFAULT_LOBBY_HEADLINE);
+      setLobbyPrompt(data.room.lobbyPrompt || DEFAULT_LOBBY_PROMPT);
       setQuestions(cloneQuestions(data.questions));
       setToolsQuestionId((current) =>
         data.questions.some((item) => item.id === current)
@@ -190,7 +197,14 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
     setSaving(true);
     setMessage("");
     try {
-      await saveDeck({ code, hostKey, title, questions });
+      await saveDeck({
+        code,
+        hostKey,
+        title,
+        lobbyHeadline,
+        lobbyPrompt,
+        questions,
+      });
       rememberKey(code, hostKey);
       setDirty(false);
       hydratedCodeRef.current = "";
@@ -213,7 +227,9 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
       const result = await createRoom({
         code,
         hostKey,
-        title: title || "Mi experiencia en vivo",
+        title: title || DEFAULT_ROOM_TITLE,
+        lobbyHeadline,
+        lobbyPrompt,
         questions,
       });
       const nextCode = result.room?.code;
@@ -414,9 +430,37 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
                 markDirty();
                 setTitle(event.target.value);
               }}
-              placeholder="Nombre de tu meetup"
+              placeholder={DEFAULT_ROOM_TITLE}
             />
           </label>
+
+          <label>
+            Título del lobby (pantalla grande)
+            <input
+              value={lobbyHeadline}
+              onChange={(event) => {
+                markDirty();
+                setLobbyHeadline(event.target.value);
+              }}
+              placeholder={DEFAULT_LOBBY_HEADLINE}
+            />
+          </label>
+
+          <label>
+            Texto del lobby
+            <textarea
+              rows={3}
+              value={lobbyPrompt}
+              onChange={(event) => {
+                markDirty();
+                setLobbyPrompt(event.target.value);
+              }}
+              placeholder={DEFAULT_LOBBY_PROMPT}
+            />
+          </label>
+          <p className="studio-hint">
+            Eso se muestra en Presentar antes de comenzar la sala.
+          </p>
 
           <label>
             Código de sala

@@ -136,9 +136,18 @@ export function cloneQuestions(source = defaultQuestions): Question[] {
 
 export type ResponseValue = string | number | string[];
 
+export const DEFAULT_ROOM_TITLE = "Cursor Meetup";
+export const DEFAULT_LOBBY_HEADLINE = "Conozcámonos";
+export const DEFAULT_LOBBY_PROMPT =
+  "Escribe tu nombre y entra. Todos responden de una sola vez; aquí verás el carrusel de resultados.";
+
 export type RoomState = {
   code: string;
   title: string;
+  /** Big headline shown on the presenter lobby screen. */
+  lobbyHeadline?: string;
+  /** Supporting copy under the lobby headline. */
+  lobbyPrompt?: string;
   presenting: boolean;
   carouselIndex: number;
   updatedAt: number;

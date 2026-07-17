@@ -11,6 +11,9 @@ import {
   parseResponsesMarkdown,
 } from "./responses-md";
 import {
+  DEFAULT_LOBBY_HEADLINE,
+  DEFAULT_LOBBY_PROMPT,
+  DEFAULT_ROOM_TITLE,
   ROOM_CODE,
   cloneQuestions,
   defaultQuestions,
@@ -42,7 +45,9 @@ const SESSION_TTL_SECONDS = 60 * 60 * 12;
 function initialRoom(code: string): RoomState {
   return {
     code,
-    title: "Cursor Live",
+    title: DEFAULT_ROOM_TITLE,
+    lobbyHeadline: DEFAULT_LOBBY_HEADLINE,
+    lobbyPrompt: DEFAULT_LOBBY_PROMPT,
     presenting: false,
     carouselIndex: 0,
     updatedAt: Date.now(),
@@ -364,8 +369,16 @@ export async function clearSession(code = ROOM_CODE) {
   const questions = await getQuestions(code);
   const current = await getRoom(code);
   const title = current.title;
+  const lobbyHeadline = current.lobbyHeadline;
+  const lobbyPrompt = current.lobbyPrompt;
   const hostKeyHash = current.hostKeyHash;
-  const clearedRoom = { ...initialRoom(code), title, hostKeyHash };
+  const clearedRoom = {
+    ...initialRoom(code),
+    title,
+    lobbyHeadline,
+    lobbyPrompt,
+    hostKeyHash,
+  };
 
   if (redis) {
     await redis.del(responsesKey(code));
@@ -419,23 +432,15 @@ const DEMO_PROJECTS = [
 ];
 
 const DEMO_WORDS = [
-  "aprender", "network", "cursor", "comunidad", "ideas", "empleos",
-  "proyectos", "mentores", "IA", "inspiración", "amigos", "código",
-  "agente", "modelo", "prompt", "deploy", "producto", "diseño",
-  "datos", "startup", "freelance", "remoto", "oficina", "meetup",
-  "coffee", "demo", "pitch", "feedback", "crecimiento", "carrera",
-  "portfolio", "github", "opensource", "typescript", "python", "react",
-  "nextjs", "vercel", "redis", "api", "mcp", "herramientas",
-  "automatizar", "refactor", "tests", "bugs", "docs", "pairing",
-  "focus", "flow", "velocidad", "calidad", "impacto", "usuarios",
-  "clientes", "equipo", "liderazgo", "aprendizaje", "curiosidad", "reto",
-  "experimentar", "prototipo", "mvp", "lanzar", "iterar", "medir",
-  "analítica", "seguridad", "privacidad", "accesibilidad", "ux", "ui",
-  "mobile", "web", "cloud", "edge", "latency", "escala",
-  "costos", "pricing", "ventas", "marketing", "contenido", "comunidadtech",
-  "hackathon", "workshop", "charla", "networking", "oportunidad", "empleo",
-  "beca", "curso", "certificación", "ingles", "español", "remotoCR",
-  "híbrido", "freelanceCR", "sideproject", "hobby", "pasión", "misión",
+  // Deliberate repetitions and casing/accent variations make frequency
+  // differences obvious when testing the cloud with 20, 50, or 100 answers.
+  "Cursor", "CURSOR", "cursor", "Cursor", "cursor",
+  "IA", "ia", "Ia", "IA",
+  "Código", "CODIGO", "código",
+  "comunidad", "COMUNIDAD", "Comunidad",
+  "aprender", "APRENDER",
+  "agentes", "Agentes",
+  "ideas",
 ];
 
 function uniqueShuffle<T>(items: T[], seed: number): T[] {
@@ -451,9 +456,7 @@ function uniqueShuffle<T>(items: T[], seed: number): T[] {
 
 function demoValueFor(question: Question, index: number): ResponseValue {
   if (question.type === "word-cloud") {
-    const base = DEMO_WORDS[index % DEMO_WORDS.length];
-    // Keep values unique even past the word list length.
-    return index < DEMO_WORDS.length ? base : `${base}${index}`;
+    return DEMO_WORDS[index % DEMO_WORDS.length];
   }
   if (question.type === "choice") {
     const options = question.options ?? ["Opción 1", "Opción 2", "Opción 3"];

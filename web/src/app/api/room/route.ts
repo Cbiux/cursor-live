@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { Question, ResponseValue } from "@/lib/slides";
 import {
+  DEFAULT_LOBBY_HEADLINE,
+  DEFAULT_LOBBY_PROMPT,
+  DEFAULT_ROOM_TITLE,
+} from "@/lib/slides";
+import {
   hashHostKey,
   toPublicRoom,
   validateHostKeyInput,
@@ -74,6 +79,8 @@ export async function POST(request: NextRequest) {
     value?: ResponseValue;
     hostKey?: string;
     title?: string;
+    lobbyHeadline?: string;
+    lobbyPrompt?: string;
     questions?: Question[];
     markdown?: string;
     action?:
@@ -114,7 +121,10 @@ export async function POST(request: NextRequest) {
 
     const room = await setRoom(
       {
-        title: body.title?.trim() || "Mi experiencia en vivo",
+        title: body.title?.trim() || DEFAULT_ROOM_TITLE,
+        lobbyHeadline:
+          body.lobbyHeadline?.trim() || DEFAULT_LOBBY_HEADLINE,
+        lobbyPrompt: body.lobbyPrompt?.trim() || DEFAULT_LOBBY_PROMPT,
         presenting: false,
         carouselIndex: 0,
         hostKeyHash: hashHostKey(body.hostKey!),
@@ -157,9 +167,15 @@ export async function POST(request: NextRequest) {
     });
     if (!auth.ok) return authErrorResponse(auth);
 
-    if (body.title?.trim()) {
-      await setRoom({ title: body.title.trim() }, code);
-    }
+    await setRoom(
+      {
+        title: body.title?.trim() || DEFAULT_ROOM_TITLE,
+        lobbyHeadline:
+          body.lobbyHeadline?.trim() || DEFAULT_LOBBY_HEADLINE,
+        lobbyPrompt: body.lobbyPrompt?.trim() || DEFAULT_LOBBY_PROMPT,
+      },
+      code,
+    );
 
     const questions = await saveQuestions(body.questions, code);
     const room = await getRoom(code);
@@ -237,7 +253,15 @@ export async function POST(request: NextRequest) {
     } else {
       await setRoom(
         {
-          title: parsed.title,
+          title: parsed.title || DEFAULT_ROOM_TITLE,
+          lobbyHeadline:
+            body.lobbyHeadline?.trim() ||
+            existing.lobbyHeadline ||
+            DEFAULT_LOBBY_HEADLINE,
+          lobbyPrompt:
+            body.lobbyPrompt?.trim() ||
+            existing.lobbyPrompt ||
+            DEFAULT_LOBBY_PROMPT,
           presenting: false,
           carouselIndex: 0,
           hostKeyHash: hashHostKey(body.hostKey!),
@@ -246,12 +270,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (body.title?.trim() || parsed.title) {
-      await setRoom(
-        { title: body.title?.trim() || parsed.title },
-        code,
-      );
-    }
+    await setRoom(
+      {
+        title: body.title?.trim() || parsed.title || DEFAULT_ROOM_TITLE,
+        ...(body.lobbyHeadline?.trim()
+          ? { lobbyHeadline: body.lobbyHeadline.trim() }
+          : {}),
+        ...(body.lobbyPrompt?.trim()
+          ? { lobbyPrompt: body.lobbyPrompt.trim() }
+          : {}),
+      },
+      code,
+    );
 
     const questions = await saveQuestions(parsed.questions, code);
     const room = await getRoom(code);

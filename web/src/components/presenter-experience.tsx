@@ -22,6 +22,10 @@ import {
   writeRoomHostKey,
 } from "@/components/host-key-input";
 import type { Question, ResponseRecord } from "@/lib/slides";
+import {
+  DEFAULT_LOBBY_HEADLINE,
+  DEFAULT_LOBBY_PROMPT,
+} from "@/lib/slides";
 import { hostAction, responsesFor, useRoom } from "@/lib/use-room";
 
 type Count = { label: string; count: number; score?: number };
@@ -90,16 +94,21 @@ function WordCloud({ responses }: { responses: ResponseRecord[] }) {
   const words = new Map<string, number>();
   responses.forEach((response) => {
     if (typeof response.value !== "string") return;
-    const word = response.value.trim();
+    const word = response.value
+      .trim()
+      .toLocaleLowerCase("es")
+      .normalize("NFD")
+      .replace(/\p{Diacritic}/gu, "")
+      .replace(/\s+/g, " ");
     if (!word) return;
-    const key = word.toLocaleLowerCase("es");
-    words.set(key, (words.get(key) ?? 0) + 1);
+    words.set(word, (words.get(word) ?? 0) + 1);
   });
   const sorted = [...words.entries()].sort((a, b) => b[1] - a[1]);
   const max = Math.max(...sorted.map(([, count]) => count), 1);
   const density = sorted.length > 50 ? "dense" : sorted.length > 28 ? "compact" : "";
   const baseSize = sorted.length > 50 ? 0.72 : sorted.length > 28 ? 0.9 : 1.25;
   const scale = sorted.length > 50 ? 1.25 : sorted.length > 28 ? 2 : 3.4;
+  const tilts = ["tilt-left-2", "tilt-right-1", "tilt-left-1", "tilt-right-2", "tilt-none"];
 
   return (
     <div className={`word-cloud ${density}`}>
@@ -107,8 +116,17 @@ function WordCloud({ responses }: { responses: ResponseRecord[] }) {
         sorted.map(([word, count], index) => (
           <span
             key={word}
-            className={index < 3 ? "featured" : ""}
-            style={{ fontSize: `${baseSize + (count / max) * scale}rem` }}
+            className={[
+              index < 3 ? "featured" : "",
+              count > 1 ? "repeated" : "",
+              tilts[index % tilts.length],
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            style={{
+              fontSize: `${baseSize + (max > 1 ? Math.sqrt(count / max) * scale : 0)}rem`,
+            }}
+            title={`${count} ${count === 1 ? "respuesta" : "respuestas"}`}
           >
             {word}
           </span>
@@ -374,11 +392,11 @@ export function PresenterExperience({ code }: { code: string }) {
         <section className="lobby-stage">
           <div>
             <p className="eyebrow">LOBBY</p>
-            <h1>Escanea, escribe tu nombre y entra.</h1>
+            <h1>
+              {data.room.lobbyHeadline?.trim() || DEFAULT_LOBBY_HEADLINE}
+            </h1>
             <p className="stage-prompt">
-              {questions.length} preguntas listas. Si no ponen nombre, salen
-              como Anónimo. Todos responden de una sola vez; aquí verás el
-              carrusel de resultados.
+              {data.room.lobbyPrompt?.trim() || DEFAULT_LOBBY_PROMPT}
             </p>
             <div className="join-card">
               <QRCodeSVG
