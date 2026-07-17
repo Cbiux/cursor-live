@@ -181,29 +181,36 @@ function ScaleResults({ responses }: { responses: ResponseRecord[] }) {
 }
 
 function OpenResults({ responses }: { responses: ResponseRecord[] }) {
+  const [selectedCard, setSelectedCard] = useState<string | null>(null);
   const items = [...responses].reverse();
   if (!items.length) return <WaitingResults />;
-  const density =
-    items.length > 80
-      ? "ultra"
-      : items.length > 50
-        ? "dense"
-        : items.length > 24
-          ? "compact"
-          : "";
+
   return (
     <div
-      className={`open-grid ${density}`}
+      className="open-grid"
       aria-label={`${items.length} respuestas abiertas`}
     >
       {items.map((item, index) => (
-        <div
-          className={index < 2 ? "open-card featured" : "open-card"}
+        <button
+          type="button"
+          className={`open-card ${selectedCard === `${item.participantId}-${item.createdAt}` ? "featured selected" : ""}`}
           key={`${item.participantId}-${item.createdAt}-${index}`}
+          aria-pressed={
+            selectedCard === `${item.participantId}-${item.createdAt}`
+          }
+          onClick={(event) => {
+            const key = `${item.participantId}-${item.createdAt}`;
+            setSelectedCard((current) => (current === key ? null : key));
+            event.currentTarget.scrollIntoView({
+              behavior: "smooth",
+              block: "nearest",
+              inline: "center",
+            });
+          }}
         >
           <span className="open-name">{item.name}</span>
           <span className="open-value">{String(item.value)}</span>
-        </div>
+        </button>
       ))}
     </div>
   );
