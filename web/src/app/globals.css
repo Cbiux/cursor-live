@@ -379,9 +379,13 @@ button {
   padding: 3vh 0 8vh;
 }
 
-.lobby-stage > div:first-child,
+.lobby-copy,
 .stage .question-column {
   min-width: 0;
+}
+
+.lobby-copy {
+  container-type: inline-size;
 }
 
 .question-column h1,
@@ -392,8 +396,13 @@ button {
   font-weight: 560;
   letter-spacing: -0.058em;
   line-height: 0.98;
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
+}
+
+.lobby-stage h1.single-word {
+  white-space: nowrap;
 }
 
 .stage-prompt {

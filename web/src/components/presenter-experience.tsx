@@ -381,6 +381,14 @@ export function PresenterExperience({ code }: { code: string }) {
     );
   }
 
+  const lobbyHeadline =
+    data.room.lobbyHeadline?.trim() || DEFAULT_LOBBY_HEADLINE;
+  const singleWordHeadline = !/\s/.test(lobbyHeadline);
+  const headlineCqw = Math.min(
+    13,
+    Math.max(6, 180 / Math.max(lobbyHeadline.length, 1)),
+  );
+
   if (!presenting) {
     return (
       <main className="presenter-shell lobby-shell">
@@ -408,10 +416,15 @@ export function PresenterExperience({ code }: { code: string }) {
         </header>
 
         <section className="lobby-stage">
-          <div>
+          <div className="lobby-copy">
             <p className="eyebrow">LOBBY</p>
-            <h1>
-              {data.room.lobbyHeadline?.trim() || DEFAULT_LOBBY_HEADLINE}
+            <h1
+              className={singleWordHeadline ? "single-word" : undefined}
+              style={{
+                fontSize: `clamp(1.8rem, ${headlineCqw}cqw, 4.2rem)`,
+              }}
+            >
+              {lobbyHeadline}
             </h1>
             <p className="stage-prompt">
               {data.room.lobbyPrompt?.trim() || DEFAULT_LOBBY_PROMPT}
