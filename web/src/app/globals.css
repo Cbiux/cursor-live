@@ -373,24 +373,31 @@ button {
 .stage {
   display: grid;
   min-height: calc(100vh - 160px);
-  grid-template-columns: minmax(340px, 0.95fr) minmax(420px, 1.25fr);
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.25fr);
   gap: 4vw;
   align-items: center;
   padding: 3vh 0 8vh;
 }
 
+.lobby-stage > div:first-child,
+.stage .question-column {
+  min-width: 0;
+}
+
 .question-column h1,
 .lobby-stage h1 {
-  max-width: 720px;
+  max-width: 100%;
   margin-top: 1rem;
-  font-size: clamp(2.8rem, 5vw, 5.8rem);
+  font-size: clamp(2.4rem, 4.2vw, 4.6rem);
   font-weight: 560;
   letter-spacing: -0.058em;
-  line-height: 0.94;
+  line-height: 0.98;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .stage-prompt {
-  max-width: 580px;
+  max-width: min(580px, 100%);
   margin-top: 1.3rem;
   color: var(--muted);
   font-size: clamp(1rem, 1.5vw, 1.35rem);
@@ -445,6 +452,7 @@ button {
 
 .name-wall {
   display: flex;
+  min-width: 0;
   min-height: 360px;
   flex-wrap: wrap;
   align-content: center;
@@ -1986,6 +1994,7 @@ body {
   background: var(--card);
   padding: clamp(2rem, 5vw, 4.5rem);
   box-shadow: var(--shadow);
+  overflow: hidden;
 }
 
 .carousel-dots {
@@ -1998,6 +2007,11 @@ body {
 .question-column h1,
 .lobby-stage h1 {
   font-weight: 620;
+}
+
+.results-column,
+.name-wall {
+  min-width: 0;
 }
 
 .join-card,
