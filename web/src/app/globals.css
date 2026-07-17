@@ -2135,7 +2135,7 @@ body {
 .scale-grid button.selected {
   border-color: var(--black);
   background: var(--black);
-  color: white;
+  color: var(--bg);
 }
 
 .name-pill:nth-child(3n) {
@@ -2144,8 +2144,8 @@ body {
 }
 
 .studio-message {
-  background: #eeeeea;
-  color: #555650;
+  background: var(--green-soft);
+  color: var(--green-deep);
 }
 
 html[data-theme="dark"] {
@@ -2283,6 +2283,32 @@ html[data-theme="dark"] input::placeholder,
 html[data-theme="dark"] textarea::placeholder {
   color: #9a9a93;
   opacity: 1;
+}
+
+html[data-theme="dark"] .entry-card:hover {
+  background: #22221e;
+  box-shadow: inset 0 0 0 1px #3a3a34;
+}
+
+html[data-theme="dark"] .bar-track {
+  background: rgba(243, 243, 238, 0.12);
+}
+
+html[data-theme="dark"] .key-visibility-toggle:hover {
+  background: rgba(243, 243, 238, 0.08);
+}
+
+html[data-theme="dark"] .option-button.selected b {
+  background: rgba(20, 20, 18, 0.15);
+  color: #141412;
+}
+
+html[data-theme="dark"] .open-card.featured {
+  color: #141412;
+}
+
+html[data-theme="dark"] .open-card.featured .open-value {
+  color: #141412;
 }
 
 .pos-header {
