@@ -17,6 +17,8 @@ import {
   Plus,
   Save,
   Trash2,
+  TriangleAlert,
+  X,
 } from "lucide-react";
 import { AppHeader } from "@/components/app-header";
 import {
@@ -65,6 +67,14 @@ function extractCursorNumber(code: string) {
   return match?.[1] ?? "";
 }
 
+type ToastTone = "success" | "error" | "info";
+
+type ToastState = {
+  id: number;
+  text: string;
+  tone: ToastTone;
+};
+
 export function HostStudio({ initialCode }: { initialCode: string }) {
   const { t } = usePreferences();
   const typeLabel = (type: QuestionType) => t(`type.${type}`);
@@ -90,7 +100,7 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
     cloneQuestions(defaultQuestions),
   );
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
+  const [toast, setToast] = useState<ToastState | null>(null);
   const [copied, setCopied] = useState(false);
   const [toolsQuestionId, setToolsQuestionId] = useState(
     defaultQuestions[0]?.id ?? 0,
@@ -98,8 +108,30 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
   const [questionsMdPaste, setQuestionsMdPaste] = useState("");
   const [dirty, setDirty] = useState(false);
   const hydratedCodeRef = useRef("");
+  const ownedToastCodeRef = useRef("");
+  const toastTimerRef = useRef<number | null>(null);
   const questionsFileRef = useRef<HTMLInputElement>(null);
   const responsesFileRef = useRef<HTMLInputElement>(null);
+
+  const showToast = (text: string, tone: ToastTone = "info") => {
+    if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+    const next = { id: Date.now(), text, tone };
+    setToast(next);
+    toastTimerRef.current = window.setTimeout(() => {
+      setToast((current) => (current?.id === next.id ? null : current));
+    }, tone === "error" ? 5200 : 3400);
+  };
+
+  const clearToast = () => {
+    if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+    setToast(null);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -135,11 +167,18 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
           ? current
           : (data.questions[0]?.id ?? 0),
       );
-      if (data.room.hasHostKey && !readRoomHostKey(code)) {
-        setMessage(t("host.msgOwned"));
+      if (
+        data.room.hasHostKey &&
+        !readRoomHostKey(code) &&
+        ownedToastCodeRef.current !== code
+      ) {
+        ownedToastCodeRef.current = code;
+        showToast(t("host.msgOwned"), "info");
       }
     }, 0);
     return () => window.clearTimeout(timer);
+    // Intentionally omit showToast to avoid re-toasting on poll.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code, data, dirty, t]);
 
   const rememberKey = (nextCode: string, key: string) => {
@@ -204,11 +243,11 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
 
   const requireAccess = (needsCode = true) => {
     if (needsCode && !code) {
-      setMessage(t("host.msgNeedNumber"));
+      showToast(t("host.msgNeedNumber"), "error");
       return false;
     }
     if (!hostKey.trim()) {
-      setMessage(t("host.msgNeedKey"));
+      showToast(t("host.msgNeedKey"), "error");
       return false;
     }
     return true;
@@ -217,7 +256,6 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
   const persist = async () => {
     if (!requireAccess()) return;
     setSaving(true);
-    setMessage("");
     try {
       await saveDeck({
         code,
@@ -234,11 +272,11 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
       setDirty(false);
       hydratedCodeRef.current = "";
       await refresh();
-      setMessage(t("host.msgSaved"));
+      showToast(t("host.msgSaved"), "success");
     } catch (cause) {
       const text =
         cause instanceof Error ? cause.message : t("host.msgSaveFail");
-      setMessage(text);
+      showToast(text, "error");
     } finally {
       setSaving(false);
     }
@@ -247,7 +285,6 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
   const createNew = async () => {
     if (!requireAccess()) return;
     setSaving(true);
-    setMessage("");
     try {
       const result = await createRoom({
         code,
@@ -267,12 +304,13 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
       hydratedCodeRef.current = "";
       const number = extractCursorNumber(nextCode);
       if (number) setRoomNumber(number);
-      setMessage(
-        `Sala creada: ${nextCode}. Guarda tu clave — solo quien la tenga puede gestionarla.`,
-      );
+      showToast(`${t("host.msgCreated")} ${nextCode}`, "success");
       window.history.replaceState({}, "", `/host?code=${nextCode}`);
     } catch (cause) {
-      setMessage(cause instanceof Error ? cause.message : t("host.msgCreateFail"));
+      showToast(
+        cause instanceof Error ? cause.message : t("host.msgCreateFail"),
+        "error",
+      );
     } finally {
       setSaving(false);
     }
@@ -281,9 +319,14 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
   const copyJoin = async () => {
     if (!code) return;
     const url = `${window.location.origin}/join?code=${code}`;
-    await navigator.clipboard.writeText(url);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1500);
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      showToast(t("host.msgLinkCopied"), "success");
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      showToast(t("host.msgLinkCopyFail"), "error");
+    }
   };
 
   const toolsQuestion =
@@ -294,20 +337,19 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
       await navigator.clipboard.writeText(
         buildQuestionsMdPrompt({ title }),
       );
-      setMessage(t("host.msgPromptCopied"));
+      showToast(t("host.msgPromptCopied"), "success");
     } catch {
-      setMessage(t("host.msgPromptFail"));
+      showToast(t("host.msgPromptFail"), "error");
     }
   };
 
   const configureFromQuestionsMd = async (markdown: string) => {
     if (!requireAccess()) return;
     if (!markdown.trim()) {
-      setMessage(t("host.msgNeedMd"));
+      showToast(t("host.msgNeedMd"), "error");
       return;
     }
     setSaving(true);
-    setMessage("");
     try {
       const result = await importQuestionsMd({
         code,
@@ -325,12 +367,14 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
       hydratedCodeRef.current = code;
       await refresh();
       window.history.replaceState({}, "", `/host?code=${code}`);
-      setMessage(
+      showToast(
         `Sala ${code} · ${result.importedQuestions ?? result.questions?.length ?? 0} ${t("host.questionsCount")}`,
+        "success",
       );
     } catch (cause) {
-      setMessage(
+      showToast(
         cause instanceof Error ? cause.message : t("host.msgMdFail"),
+        "error",
       );
     } finally {
       setSaving(false);
@@ -341,7 +385,6 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
   const seedResponses = async (count: number) => {
     if (!requireAccess()) return;
     setSaving(true);
-    setMessage("");
     try {
       await hostAction({
         code,
@@ -351,10 +394,11 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
       });
       rememberKey(code, hostKey);
       await refresh();
-      setMessage(`${count} ${t("host.responses")}`);
+      showToast(`${count} ${t("host.responses")}`, "success");
     } catch (cause) {
-      setMessage(
+      showToast(
         cause instanceof Error ? cause.message : t("host.msgSeedFail"),
+        "error",
       );
     } finally {
       setSaving(false);
@@ -371,16 +415,15 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
           questions,
         })}\n\n---\n\nEjemplo de formato:\n\n${RESPONSES_MD_EXAMPLE}`,
       );
-      setMessage(t("host.msgResponsesPromptCopied"));
+      showToast(t("host.msgResponsesPromptCopied"), "success");
     } catch {
-      setMessage(t("host.msgResponsesPromptFail"));
+      showToast(t("host.msgResponsesPromptFail"), "error");
     }
   };
 
   const importResponsesFile = async (file: File) => {
     if (!requireAccess()) return;
     setSaving(true);
-    setMessage("");
     try {
       const markdown = await file.text();
       const result = await importResponsesMd({
@@ -391,14 +434,16 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
       });
       rememberKey(code, hostKey);
       await refresh();
-      setMessage(
+      showToast(
         `${t("host.imported")} ${result.imported ?? 0} ${t("host.responses")}` +
           (result.skipped ? ` · ${result.skipped} ${t("host.skipped")}` : "") +
           ".",
+        "success",
       );
     } catch (cause) {
-      setMessage(
+      showToast(
         cause instanceof Error ? cause.message : t("host.msgImportFail"),
+        "error",
       );
     } finally {
       setSaving(false);
@@ -422,6 +467,33 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
   return (
     <main className="studio-shell">
       <AppHeader />
+
+      {toast && (
+        <div
+          className={`studio-toast tone-${toast.tone}`}
+          role={toast.tone === "error" ? "alert" : "status"}
+          aria-live={toast.tone === "error" ? "assertive" : "polite"}
+        >
+          <div className="studio-toast-icon">
+            {toast.tone === "success" ? (
+              <Check size={16} strokeWidth={2.4} />
+            ) : toast.tone === "error" ? (
+              <TriangleAlert size={16} strokeWidth={2.4} />
+            ) : (
+              <MonitorPlay size={15} strokeWidth={2.2} />
+            )}
+          </div>
+          <p>{toast.text}</p>
+          <button
+            type="button"
+            className="studio-toast-close"
+            onClick={clearToast}
+            aria-label={t("host.toastClose")}
+          >
+            <X size={15} />
+          </button>
+        </div>
+      )}
 
       <header className="studio-header">
         <div>
@@ -734,8 +806,6 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
               }}
             />
           </section>
-
-          {message && <p className="studio-message">{message}</p>}
 
           <div className="studio-meta">
             <span>

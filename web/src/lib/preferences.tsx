@@ -129,6 +129,10 @@ const dictionary = {
     "host.msgImportFail": "No se pudo importar el .md.",
     "host.msgOwned":
       "Esta sala ya tiene dueño. Escribe su clave para gestionarla o cambia el número.",
+    "host.msgCreated": "Sala creada:",
+    "host.msgLinkCopied": "Link de unirse copiado.",
+    "host.msgLinkCopyFail": "No se pudo copiar el link.",
+    "host.toastClose": "Cerrar aviso",
     "host.imported": "Importadas",
     "host.responses": "respuestas",
     "host.skipped": "omitidas",
@@ -290,6 +294,10 @@ const dictionary = {
     "host.msgImportFail": "Could not import the .md.",
     "host.msgOwned":
       "This room already has an owner. Enter its key to manage it or change the number.",
+    "host.msgCreated": "Room created:",
+    "host.msgLinkCopied": "Join link copied.",
+    "host.msgLinkCopyFail": "Could not copy the join link.",
+    "host.toastClose": "Dismiss notice",
     "host.imported": "Imported",
     "host.responses": "responses",
     "host.skipped": "skipped",
