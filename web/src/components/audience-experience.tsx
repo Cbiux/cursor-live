@@ -15,6 +15,7 @@ import {
   DEFAULT_AUDIENCE_WAITING_PROMPT,
 } from "@/lib/slides";
 import { joinRoom, sendResponse, useRoom } from "@/lib/use-room";
+import { usePreferences } from "@/lib/preferences";
 
 function getParticipantId() {
   const saved = window.localStorage.getItem("cursor-live-participant");
@@ -29,6 +30,7 @@ function emptyValue(question: Question): ResponseValue {
 }
 
 export function AudienceExperience({ code }: { code: string }) {
+  const { t } = usePreferences();
   const { data, error } = useRoom(code, 1500);
   const [participantId] = useState(() =>
     typeof window === "undefined" ? "" : getParticipantId(),
@@ -52,7 +54,7 @@ export function AudienceExperience({ code }: { code: string }) {
 
   const enter = async () => {
     if (!participantId) return;
-    const clean = name.trim() || "Anónimo";
+    const clean = name.trim() || t("audience.anonymous");
     setJoining(true);
     setMessage("");
     try {
@@ -64,7 +66,7 @@ export function AudienceExperience({ code }: { code: string }) {
       setDone(false);
       if (questions[0]) setValue(emptyValue(questions[0]));
     } catch (cause) {
-      setMessage(cause instanceof Error ? cause.message : "Intenta otra vez.");
+      setMessage(cause instanceof Error ? cause.message : t("audience.retry"));
     } finally {
       setJoining(false);
     }
@@ -78,7 +80,7 @@ export function AudienceExperience({ code }: { code: string }) {
     }
   };
 
-  const displayName = name.trim() || "Anónimo";
+  const displayName = name.trim() || t("audience.anonymous");
 
   const canSubmit =
     question?.type === "ranking"
@@ -105,7 +107,7 @@ export function AudienceExperience({ code }: { code: string }) {
         setValue(emptyValue(questions[next]));
       }
     } catch (cause) {
-      setMessage(cause instanceof Error ? cause.message : "Intenta otra vez.");
+      setMessage(cause instanceof Error ? cause.message : t("audience.retry"));
     } finally {
       setSending(false);
     }
@@ -115,7 +117,7 @@ export function AudienceExperience({ code }: { code: string }) {
     return (
       <main className="mobile-shell center-screen">
         <LoaderCircle className="spin" />
-        <p>{error || "Conectando con la sala…"}</p>
+        <p>{error || t("audience.connecting")}</p>
       </main>
     );
   }
@@ -127,8 +129,10 @@ export function AudienceExperience({ code }: { code: string }) {
           <Sparkles size={16} />
           {data.room.title}
         </div>
-        <p className="eyebrow">SALA {code}</p>
-        <h1>Escribe tu nombre para entrar</h1>
+        <p className="eyebrow">
+          {t("audience.room")} {code}
+        </p>
+        <h1>{t("audience.enterName")}</h1>
         <p className="mobile-prompt">
           {data.room.audienceJoinPrompt?.trim() ||
             DEFAULT_AUDIENCE_JOIN_PROMPT}
@@ -137,7 +141,7 @@ export function AudienceExperience({ code }: { code: string }) {
           className="text-input name-input"
           value={name}
           onChange={(event) => setName(event.target.value.slice(0, 24))}
-          placeholder="Tu nombre o nick (opcional)"
+          placeholder={t("audience.namePlaceholder")}
           autoFocus
           maxLength={24}
           onKeyDown={(event) => {
@@ -151,11 +155,11 @@ export function AudienceExperience({ code }: { code: string }) {
         >
           {joining ? (
             <>
-              <LoaderCircle className="spin" size={18} /> Entrando
+              <LoaderCircle className="spin" size={18} /> {t("audience.entering")}
             </>
           ) : (
             <>
-              Entrar <ArrowRight size={18} />
+              {t("audience.enter")} <ArrowRight size={18} />
             </>
           )}
         </button>
@@ -169,9 +173,11 @@ export function AudienceExperience({ code }: { code: string }) {
       <main className="mobile-shell waiting-screen">
         <div className="brand-mark">
           <Radio size={16} />
-          LISTO
+          {t("audience.ready")}
         </div>
-        <p className="eyebrow">HOLA, {displayName.toUpperCase()}</p>
+        <p className="eyebrow">
+          {t("audience.hello")} {displayName.toUpperCase()}
+        </p>
         <h1>
           {data.room.audienceWaitingHeadline?.trim() ||
             DEFAULT_AUDIENCE_WAITING_HEADLINE}
@@ -182,7 +188,7 @@ export function AudienceExperience({ code }: { code: string }) {
         </p>
         <div className="lobby-count">
           <strong>{data.participants.length}</strong>
-          <span>en la sala</span>
+          <span>{t("audience.inRoom")}</span>
         </div>
       </main>
     );
@@ -193,13 +199,13 @@ export function AudienceExperience({ code }: { code: string }) {
       <main className="mobile-shell waiting-screen">
         <div className="brand-mark">
           <Check size={16} />
-          LISTO
+          {t("audience.ready")}
         </div>
-        <p className="eyebrow">GRACIAS, {displayName.toUpperCase()}</p>
-        <h1>Tus respuestas ya están en pantalla.</h1>
-        <p className="muted">
-          Mira el carrusel del host. Ya puedes bajar el teléfono.
+        <p className="eyebrow">
+          {t("audience.thanks")} {displayName.toUpperCase()}
         </p>
+        <h1>{t("audience.doneTitle")}</h1>
+        <p className="muted">{t("audience.doneCopy")}</p>
       </main>
     );
   }
@@ -208,7 +214,7 @@ export function AudienceExperience({ code }: { code: string }) {
     return (
       <main className="mobile-shell center-screen">
         <LoaderCircle className="spin" />
-        <p>Cargando preguntas…</p>
+        <p>{t("audience.loadingQuestions")}</p>
       </main>
     );
   }
@@ -240,7 +246,7 @@ export function AudienceExperience({ code }: { code: string }) {
           className="text-input"
           value={String(value)}
           onChange={(event) => setValue(event.target.value.slice(0, 20))}
-          placeholder="Una palabra"
+          placeholder={t("audience.oneWord")}
           autoFocus
         />
       )}
@@ -253,7 +259,7 @@ export function AudienceExperience({ code }: { code: string }) {
             const words = event.target.value.trim().split(/\s+/).slice(0, 7);
             setValue(words.join(" "));
           }}
-          placeholder="Tu respuesta…"
+          placeholder={t("audience.yourAnswer")}
           rows={4}
           autoFocus
         />
@@ -290,7 +296,9 @@ export function AudienceExperience({ code }: { code: string }) {
 
       {question.type === "ranking" && (
         <>
-          <div className="rank-progress">{rank.length}/3 seleccionados</div>
+          <div className="rank-progress">
+            {rank.length}/3 {t("audience.selected")}
+          </div>
           <div className="option-list">
             {question.options?.map((option) => {
               const position = rank.indexOf(option);
@@ -316,15 +324,15 @@ export function AudienceExperience({ code }: { code: string }) {
       >
         {sending ? (
           <>
-            <LoaderCircle className="spin" size={18} /> Enviando
+            <LoaderCircle className="spin" size={18} /> {t("audience.sending")}
           </>
         ) : step >= questions.length - 1 ? (
           <>
-            <Check size={18} /> Terminar
+            <Check size={18} /> {t("audience.finish")}
           </>
         ) : (
           <>
-            Siguiente <ArrowRight size={18} />
+            {t("audience.next")} <ArrowRight size={18} />
           </>
         )}
       </button>

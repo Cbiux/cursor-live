@@ -1675,19 +1675,51 @@ button {
 
 .question-card-tools {
   display: flex;
-  gap: 0.35rem;
+  flex-shrink: 0;
+  gap: 0.4rem;
 }
 
 .question-card-tools button {
-  width: 32px;
-  height: 32px;
+  display: inline-grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--panel);
+  color: var(--muted);
   cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.question-card-tools button:hover:not(:disabled) {
+  border-color: var(--ink);
+  background: var(--card);
+  color: var(--ink);
+  transform: translateY(-1px);
+}
+
+.question-card-tools button:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+
+.question-card-tools button:disabled {
+  cursor: not-allowed;
+  opacity: 0.28;
 }
 
 .question-card-tools button.danger {
+  color: #b42318;
+}
+
+.question-card-tools button.danger:hover:not(:disabled) {
+  border-color: #b42318;
+  background: rgba(180, 35, 24, 0.08);
   color: #b42318;
 }
 

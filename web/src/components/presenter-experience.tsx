@@ -28,6 +28,7 @@ import {
   DEFAULT_LOBBY_PROMPT,
 } from "@/lib/slides";
 import { hostAction, responsesFor, useRoom } from "@/lib/use-room";
+import { usePreferences } from "@/lib/preferences";
 
 type Count = { label: string; count: number; score?: number };
 
@@ -240,10 +241,11 @@ function OpenResults({ responses }: { responses: ResponseRecord[] }) {
 }
 
 function WaitingResults() {
+  const { t } = usePreferences();
   return (
     <div className="waiting-results">
       <span className="pulse-dot" />
-      Esperando respuestas…
+      {t("present.waitingAnswers")}
     </div>
   );
 }
@@ -268,8 +270,10 @@ function FeedTicker({ responses }: { responses: ResponseRecord[] }) {
   );
 }
 
-function responseLabel(count: number) {
-  return count === 1 ? "1 respuesta" : `${count} respuestas`;
+function responseLabel(count: number, t: (key: string) => string) {
+  return count === 1
+    ? t("present.responseOne")
+    : `${count} ${t("present.responseMany")}`;
 }
 
 async function downloadQrPng(svg: SVGSVGElement, filename: string) {
@@ -334,6 +338,7 @@ async function downloadQrPng(svg: SVGSVGElement, filename: string) {
 }
 
 export function PresenterExperience({ code }: { code: string }) {
+  const { t } = usePreferences();
   const { data, error, refresh } = useRoom(code, 900);
   const [hostKey, setHostKey] = useState("");
   const [busy, setBusy] = useState(false);
@@ -410,7 +415,7 @@ export function PresenterExperience({ code }: { code: string }) {
     targetIndex?: number,
   ) => {
     if (!hostKey.trim()) {
-      setNotice("Escribe la clave de esta sala para gestionarla.");
+      setNotice(t("present.needKey"));
       return;
     }
     setBusy(true);
@@ -440,7 +445,7 @@ export function PresenterExperience({ code }: { code: string }) {
       await refresh();
     } catch (cause) {
       setNotice(
-        cause instanceof Error ? cause.message : "No se pudo actualizar.",
+        cause instanceof Error ? cause.message : t("present.updateFail"),
       );
     } finally {
       setBusy(false);
@@ -451,7 +456,7 @@ export function PresenterExperience({ code }: { code: string }) {
     return (
       <main className="presenter-shell center-screen">
         <LoaderCircle className="spin" />
-        <p>{error || "Preparando la experiencia…"}</p>
+        <p>{error || t("present.loading")}</p>
       </main>
     );
   }
@@ -469,7 +474,7 @@ export function PresenterExperience({ code }: { code: string }) {
       <main className="presenter-shell lobby-shell">
         <header className="presenter-header">
           <div className="event-brand">
-            <Link href="/" className="brand-home" aria-label="Volver al inicio">
+            <Link href="/" className="brand-home" aria-label={t("present.home")}>
               <Image
                 src="/logo-source-dark.png"
                 alt="Cursor Live"
@@ -482,10 +487,10 @@ export function PresenterExperience({ code }: { code: string }) {
           </div>
           <div className="room-meta">
             <Link className="live-indicator" href={`/host?code=${code}`}>
-              <Settings2 size={14} /> Editar preguntas
+              <Settings2 size={14} /> {t("present.editQuestions")}
             </Link>
             <span className="live-indicator">
-              <Users size={14} /> {data.participants.length} EN LA SALA
+              <Users size={14} /> {data.participants.length} {t("present.inRoom")}
             </span>
           </div>
         </header>
@@ -521,7 +526,7 @@ export function PresenterExperience({ code }: { code: string }) {
                 />
               </div>
               <div>
-                <span>ÚNETE EN TU TELÉFONO</span>
+                <span>{t("present.joinPhone")}</span>
                 <strong>{code}</strong>
                 <small>{joinUrl.replace(/^https?:\/\//, "")}</small>
                 <button
@@ -534,13 +539,15 @@ export function PresenterExperience({ code }: { code: string }) {
                     setDownloadingQr(true);
                     void downloadQrPng(svg, `${code}-qr.png`)
                       .catch(() => {
-                        setNotice("No se pudo descargar el QR.");
+                        setNotice(t("present.qrFail"));
                       })
                       .finally(() => setDownloadingQr(false));
                   }}
                 >
                   <Download size={15} />
-                  {downloadingQr ? "Descargando…" : "Descargar QR"}
+                  {downloadingQr
+                    ? t("present.downloading")
+                    : t("present.downloadQr")}
                 </button>
               </div>
             </div>
@@ -556,7 +563,7 @@ export function PresenterExperience({ code }: { code: string }) {
             ) : (
               <div className="waiting-results">
                 <span className="pulse-dot" />
-                Esperando nombres…
+                {t("present.waitingNames")}
               </div>
             )}
           </div>
@@ -567,7 +574,7 @@ export function PresenterExperience({ code }: { code: string }) {
             <HostKeyInput
               value={hostKey}
               onChange={setHostKey}
-              placeholder="Clave de esta sala"
+              placeholder={t("present.keyPlaceholder")}
               className="host-key-field"
             />
           </div>
@@ -576,7 +583,7 @@ export function PresenterExperience({ code }: { code: string }) {
             onClick={() => void act("start")}
             disabled={busy || !questions.length}
           >
-            <Play size={19} /> Comenzar
+            <Play size={19} /> {t("present.start")}
           </button>
           <Link href={`/host?code=${code}`} className="control-link">
             <Settings2 size={17} />
@@ -593,8 +600,8 @@ export function PresenterExperience({ code }: { code: string }) {
   if (!question) {
     return (
       <main className="presenter-shell center-screen">
-        <p>No hay preguntas. Edítalas en el panel del host.</p>
-        <Link href={`/host?code=${code}`}>Ir a editar</Link>
+        <p>{t("present.noQuestions")}</p>
+        <Link href={`/host?code=${code}`}>{t("present.goEdit")}</Link>
       </main>
     );
   }
@@ -603,7 +610,7 @@ export function PresenterExperience({ code }: { code: string }) {
     <main className="presenter-shell">
       <header className="presenter-header">
         <div className="event-brand">
-          <Link href="/" className="brand-home" aria-label="Volver al inicio">
+          <Link href="/" className="brand-home" aria-label={t("present.home")}>
             <Image
               src="/logo-source-dark.png"
               alt="Cursor Live"
@@ -616,12 +623,12 @@ export function PresenterExperience({ code }: { code: string }) {
         </div>
         <div className="room-meta">
           <span className="live-indicator active">
-            <Radio size={14} /> CARRUSEL EN VIVO
+            <Radio size={14} /> {t("present.liveCarousel")}
           </span>
           <span>
-            <Users size={15} /> {data.participants.length} personas
+            <Users size={15} /> {data.participants.length} {t("present.people")}
           </span>
-          <span>{responseLabel(totalAnswers)}</span>
+          <span>{responseLabel(totalAnswers, t)}</span>
           <span>
             {carouselIndex + 1} / {questions.length}
           </span>
@@ -634,17 +641,21 @@ export function PresenterExperience({ code }: { code: string }) {
             key={item.id}
             className={index === carouselIndex ? "dot active" : "dot"}
             onClick={() => void act("set", index)}
-            aria-label={`Ir a pregunta ${index + 1}`}
+            aria-label={`${t("present.question")} ${index + 1}`}
           />
         ))}
       </div>
 
       <section className="stage carousel-stage" key={question.id}>
         <div className="question-column">
-          <p className="eyebrow">PREGUNTA {carouselIndex + 1}</p>
+          <p className="eyebrow">
+            {t("present.question")} {carouselIndex + 1}
+          </p>
           <h1>{question.title}</h1>
           {question.prompt && <p className="stage-prompt">{question.prompt}</p>}
-          <p className="response-count">{responseLabel(responses.length)}</p>
+          <p className="response-count">
+            {responseLabel(responses.length, t)}
+          </p>
           {question.type !== "open" && <FeedTicker responses={responses} />}
         </div>
 
@@ -664,7 +675,7 @@ export function PresenterExperience({ code }: { code: string }) {
           <HostKeyInput
             value={hostKey}
             onChange={setHostKey}
-            placeholder="Clave de esta sala"
+            placeholder={t("present.keyPlaceholder")}
             className="host-key-field"
           />
         </div>
@@ -676,19 +687,19 @@ export function PresenterExperience({ code }: { code: string }) {
           onClick={() => setAutoPlay((value) => !value)}
         >
           {autoPlay ? <Pause size={19} /> : <Play size={19} />}
-          {autoPlay ? "Auto" : "Manual"}
+          {autoPlay ? t("present.auto") : t("present.manual")}
         </button>
         <button onClick={() => void act("next")} disabled={busy}>
           <ChevronRight size={20} />
         </button>
         <button
           onClick={() => document.documentElement.requestFullscreen?.()}
-          title="Pantalla completa"
+          title={t("present.fullscreen")}
         >
           <Expand size={18} />
         </button>
         <button onClick={() => void act("stop")} disabled={busy}>
-          Lobby
+          {t("present.lobby")}
         </button>
         <Link href={`/host?code=${code}`} className="control-link">
           <Settings2 size={17} />

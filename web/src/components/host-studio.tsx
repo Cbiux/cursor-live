@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
+  ArrowDown,
+  ArrowUp,
   BookOpen,
   Check,
   ClipboardCopy,
@@ -23,7 +25,6 @@ import {
   writeRoomHostKey,
 } from "@/components/host-key-input";
 import {
-  QUESTION_TYPE_LABELS,
   cloneQuestions,
   createEmptyQuestion,
   DEFAULT_AUDIENCE_JOIN_PROMPT,
@@ -66,6 +67,7 @@ function extractCursorNumber(code: string) {
 
 export function HostStudio({ initialCode }: { initialCode: string }) {
   const { t } = usePreferences();
+  const typeLabel = (type: QuestionType) => t(`type.${type}`);
   const [roomNumber, setRoomNumber] = useState(
     extractCursorNumber(initialCode) || "1",
   );
@@ -134,13 +136,11 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
           : (data.questions[0]?.id ?? 0),
       );
       if (data.room.hasHostKey && !readRoomHostKey(code)) {
-        setMessage(
-          "Esta sala ya tiene dueño. Escribe su clave para gestionarla o cambia el número.",
-        );
+        setMessage(t("host.msgOwned"));
       }
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [code, data, dirty]);
+  }, [code, data, dirty, t]);
 
   const rememberKey = (nextCode: string, key: string) => {
     writeRoomHostKey(nextCode, key);
@@ -204,11 +204,11 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
 
   const requireAccess = (needsCode = true) => {
     if (needsCode && !code) {
-      setMessage("Escribe un número para formar el código CURSOR…");
+      setMessage(t("host.msgNeedNumber"));
       return false;
     }
     if (!hostKey.trim()) {
-      setMessage("Escribe la clave (mín. 4 caracteres) para configurar la sala.");
+      setMessage(t("host.msgNeedKey"));
       return false;
     }
     return true;
@@ -234,10 +234,10 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
       setDirty(false);
       hydratedCodeRef.current = "";
       await refresh();
-      setMessage("Guardado. Usa la misma clave para presentar y gestionar.");
+      setMessage(t("host.msgSaved"));
     } catch (cause) {
       const text =
-        cause instanceof Error ? cause.message : "No se pudo guardar.";
+        cause instanceof Error ? cause.message : t("host.msgSaveFail");
       setMessage(text);
     } finally {
       setSaving(false);
@@ -261,7 +261,7 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
         questions,
       });
       const nextCode = result.room?.code;
-      if (!nextCode) throw new Error("No se generó el código.");
+      if (!nextCode) throw new Error(t("host.msgCodeFail"));
       rememberKey(nextCode, hostKey);
       setDirty(false);
       hydratedCodeRef.current = "";
@@ -272,7 +272,7 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
       );
       window.history.replaceState({}, "", `/host?code=${nextCode}`);
     } catch (cause) {
-      setMessage(cause instanceof Error ? cause.message : "No se pudo crear.");
+      setMessage(cause instanceof Error ? cause.message : t("host.msgCreateFail"));
     } finally {
       setSaving(false);
     }
@@ -294,18 +294,16 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
       await navigator.clipboard.writeText(
         buildQuestionsMdPrompt({ title }),
       );
-      setMessage(
-        "Prompt + formato copiados. Pégalos en una IA y pega el Markdown aquí (o súbelo como archivo).",
-      );
+      setMessage(t("host.msgPromptCopied"));
     } catch {
-      setMessage("No se pudo copiar el prompt.");
+      setMessage(t("host.msgPromptFail"));
     }
   };
 
   const configureFromQuestionsMd = async (markdown: string) => {
     if (!requireAccess()) return;
     if (!markdown.trim()) {
-      setMessage("Pega el Markdown o sube un archivo .md.");
+      setMessage(t("host.msgNeedMd"));
       return;
     }
     setSaving(true);
@@ -328,13 +326,11 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
       await refresh();
       window.history.replaceState({}, "", `/host?code=${code}`);
       setMessage(
-        `Sala ${code} configurada con ${result.importedQuestions ?? result.questions?.length ?? 0} preguntas desde el Markdown.`,
+        `Sala ${code} · ${result.importedQuestions ?? result.questions?.length ?? 0} ${t("host.questionsCount")}`,
       );
     } catch (cause) {
       setMessage(
-        cause instanceof Error
-          ? cause.message
-          : "No se pudo configurar la sala con el Markdown.",
+        cause instanceof Error ? cause.message : t("host.msgMdFail"),
       );
     } finally {
       setSaving(false);
@@ -355,10 +351,10 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
       });
       rememberKey(code, hostKey);
       await refresh();
-      setMessage(`Prueba lista: ${count} respuestas demo por pregunta.`);
+      setMessage(`${count} ${t("host.responses")}`);
     } catch (cause) {
       setMessage(
-        cause instanceof Error ? cause.message : "No se pudo crear la prueba.",
+        cause instanceof Error ? cause.message : t("host.msgSeedFail"),
       );
     } finally {
       setSaving(false);
@@ -375,9 +371,9 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
           questions,
         })}\n\n---\n\nEjemplo de formato:\n\n${RESPONSES_MD_EXAMPLE}`,
       );
-      setMessage("Prompt + formato de respuestas copiados.");
+      setMessage(t("host.msgResponsesPromptCopied"));
     } catch {
-      setMessage("No se pudo copiar el prompt de respuestas.");
+      setMessage(t("host.msgResponsesPromptFail"));
     }
   };
 
@@ -396,13 +392,13 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
       rememberKey(code, hostKey);
       await refresh();
       setMessage(
-        `Importadas ${result.imported ?? 0} respuestas` +
-          (result.skipped ? ` · ${result.skipped} omitidas` : "") +
+        `${t("host.imported")} ${result.imported ?? 0} ${t("host.responses")}` +
+          (result.skipped ? ` · ${result.skipped} ${t("host.skipped")}` : "") +
           ".",
       );
     } catch (cause) {
       setMessage(
-        cause instanceof Error ? cause.message : "No se pudo importar el .md.",
+        cause instanceof Error ? cause.message : t("host.msgImportFail"),
       );
     } finally {
       setSaving(false);
@@ -414,7 +410,7 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
     return (
       <main className="studio-shell center-screen">
         <LoaderCircle className="spin" />
-        <p>{error || "Cargando estudio…"}</p>
+        <p>{error || t("host.loading")}</p>
       </main>
     );
   }
@@ -429,21 +425,21 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
 
       <header className="studio-header">
         <div>
-          <p className="eyebrow">PANEL DEL HOST</p>
-          <h1>Edita tu experiencia</h1>
+          <p className="eyebrow">{t("host.eyebrow")}</p>
+          <h1>{t("host.title")}</h1>
         </div>
         <div className="studio-actions">
           <Link
             className="ghost-button"
             href={code ? `/present?code=${code}` : "/present"}
           >
-            <MonitorPlay size={16} /> Presentar
+            <MonitorPlay size={16} /> {t("host.present")}
           </Link>
           <Link
             className="ghost-button"
             href={code ? `/join?code=${code}` : "/join"}
           >
-            Probar unirse
+            {t("host.tryJoin")}
           </Link>
         </div>
       </header>
@@ -451,7 +447,7 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
       <section className="studio-grid">
         <aside className="studio-sidebar">
           <label>
-            Título del evento
+            {t("host.eventTitle")}
             <input
               value={title}
               onChange={(event) => {
@@ -463,7 +459,7 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
           </label>
 
           <label>
-            Título del lobby (pantalla grande)
+            {t("host.lobbyHeadline")}
             <input
               value={lobbyHeadline}
               onChange={(event) => {
@@ -475,7 +471,7 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
           </label>
 
           <label>
-            Texto del lobby
+            {t("host.lobbyText")}
             <textarea
               rows={3}
               value={lobbyPrompt}
@@ -486,12 +482,10 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
               placeholder={DEFAULT_LOBBY_PROMPT}
             />
           </label>
-          <p className="studio-hint">
-            Eso se muestra en Presentar antes de comenzar la sala.
-          </p>
+          <p className="studio-hint">{t("host.lobbyHint")}</p>
 
           <label>
-            Texto al unirse (participantes)
+            {t("host.audienceJoin")}
             <textarea
               rows={2}
               value={audienceJoinPrompt}
@@ -504,7 +498,7 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
           </label>
 
           <label>
-            Título en espera (participantes)
+            {t("host.audienceWaitingTitle")}
             <input
               value={audienceWaitingHeadline}
               onChange={(event) => {
@@ -516,7 +510,7 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
           </label>
 
           <label>
-            Mensaje en espera (participantes)
+            {t("host.audienceWaitingMessage")}
             <textarea
               rows={2}
               value={audienceWaitingPrompt}
@@ -527,13 +521,10 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
               placeholder={DEFAULT_AUDIENCE_WAITING_PROMPT}
             />
           </label>
-          <p className="studio-hint">
-            Lo ven en el teléfono al entrar y mientras esperan que inicies.
-            Vacío = default.
-          </p>
+          <p className="studio-hint">{t("host.audienceHint")}</p>
 
           <label>
-            Código de sala
+            {t("host.roomCode")}
             <div className="code-prefix-field">
               <span>CURSOR</span>
               <input
@@ -544,30 +535,30 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
                 placeholder="1"
                 inputMode="numeric"
                 maxLength={6}
-                aria-label="Número de sala"
+                aria-label={t("host.roomNumberAria")}
               />
             </div>
           </label>
           <p className="studio-hint">
-            Código completo: <strong>{code || "CURSOR…"}</strong>
+            {t("host.fullCode")} <strong>{code || "CURSOR…"}</strong>
           </p>
 
           <label>
-            Clave del host
+            {t("host.hostKey")}
             <HostKeyInput value={hostKey} onChange={setHostKey} />
           </label>
           <p className="studio-hint">
             {hasHostKey && code && !readRoomHostKey(code)
-              ? "Esta sala ya tiene dueño. Escribe su clave para gestionarla."
-              : "Con esta clave configuras y presentas esta sala."}
+              ? t("host.keyOwned")
+              : t("host.keyHint")}
           </p>
 
           <section className="host-tools">
             <div className="host-tools-title">
               <FileUp size={16} />
               <div>
-                <strong>Configurar con Markdown</strong>
-                <span>Pega el texto o sube un archivo</span>
+                <strong>{t("host.mdTitle")}</strong>
+                <span>{t("host.mdSubtitle")}</span>
               </div>
             </div>
 
@@ -576,17 +567,17 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
               className="primary-button"
               onClick={() => void copyQuestionsPrompt()}
             >
-              <ClipboardCopy size={16} /> Copiar prompt + formato
+              <ClipboardCopy size={16} /> {t("host.copyPrompt")}
             </button>
 
             <label className="md-paste-label">
-              Pegar Markdown
+              {t("host.pasteMd")}
               <textarea
                 className="md-paste-area"
                 rows={8}
                 value={questionsMdPaste}
                 onChange={(event) => setQuestionsMdPaste(event.target.value)}
-                placeholder={`# Título del evento\n\n## 1. word-cloud | ¿Tu pregunta?\nAyuda corta\n\n## 2. choice | Otra pregunta\nElige una\n- Opción A\n- Opción B`}
+                placeholder={`# Event title\n\n## 1. word-cloud | Your question?\nShort help\n\n## 2. choice | Another question\nPick one\n- Option A\n- Option B`}
                 spellCheck={false}
               />
             </label>
@@ -602,7 +593,7 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
               ) : (
                 <Check size={16} />
               )}
-              Aplicar Markdown pegado
+              {t("host.applyMd")}
             </button>
 
             <button
@@ -611,7 +602,7 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
               disabled={saving || !code}
               onClick={() => questionsFileRef.current?.click()}
             >
-              <FileUp size={16} /> Subir archivo .md
+              <FileUp size={16} /> {t("host.uploadMd")}
             </button>
             <input
               ref={questionsFileRef}
@@ -627,9 +618,7 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
                 });
               }}
             />
-            <p className="studio-hint">
-              1) Copia el prompt · 2) Pégalo en una IA · 3) Pega el resultado aquí o sube el .md.
-            </p>
+            <p className="studio-hint">{t("host.mdSteps")}</p>
           </section>
 
           <div className="sidebar-buttons">
@@ -643,7 +632,7 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
               ) : (
                 <Plus size={16} />
               )}
-              Crear / reclamar sala
+              {t("host.createRoom")}
             </button>
             <button
               className="secondary-button"
@@ -655,14 +644,15 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
               ) : (
                 <Save size={16} />
               )}
-              Guardar cambios
+              {t("host.save")}
             </button>
             <button
               className="secondary-button"
               disabled={!code}
               onClick={() => void copyJoin()}
             >
-              <Copy size={16} /> {copied ? "Copiado" : "Copiar link de unirse"}
+              <Copy size={16} />{" "}
+              {copied ? t("host.copied") : t("host.copyJoin")}
             </button>
             <Link
               className="primary-button present-link"
@@ -672,7 +662,7 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
                 if (!code) event.preventDefault();
               }}
             >
-              Abrir presentación <ArrowRight size={16} />
+              {t("host.openPresent")} <ArrowRight size={16} />
             </Link>
           </div>
 
@@ -680,13 +670,13 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
             <div className="host-tools-title">
               <FlaskConical size={16} />
               <div>
-                <strong>Respuestas de prueba</strong>
-                <span>Opcional, para ensayar la proyección</span>
+                <strong>{t("host.testTitle")}</strong>
+                <span>{t("host.testSubtitle")}</span>
               </div>
             </div>
 
             <label>
-              Pregunta destino
+              {t("host.targetQuestion")}
               <select
                 value={toolsQuestion?.id ?? ""}
                 onChange={(event) =>
@@ -702,7 +692,7 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
             </label>
 
             <div className="seed-tools">
-              <span>Demo rápida</span>
+              <span>{t("host.quickDemo")}</span>
               <div>
                 {[20, 50, 100].map((count) => (
                   <button
@@ -723,14 +713,14 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
                 disabled={!toolsQuestion}
                 onClick={() => void copyResponsesPrompt()}
               >
-                <ClipboardCopy size={15} /> Prompt respuestas
+                <ClipboardCopy size={15} /> {t("host.responsesPrompt")}
               </button>
               <button
                 type="button"
                 disabled={saving || !code}
                 onClick={() => responsesFileRef.current?.click()}
               >
-                <FileUp size={15} /> Subir respuestas
+                <FileUp size={15} /> {t("host.uploadResponses")}
               </button>
             </div>
             <input
@@ -748,10 +738,14 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
           {message && <p className="studio-message">{message}</p>}
 
           <div className="studio-meta">
-            <span>{questions.length} preguntas</span>
-            <span>{participantCount} en lobby</span>
-            <span>{hasHostKey ? "Con clave" : "Sin clave aún"}</span>
-            <span>{persistent ? "Redis" : "Demo local"}</span>
+            <span>
+              {questions.length} {t("host.questionsCount")}
+            </span>
+            <span>
+              {participantCount} {t("host.inLobby")}
+            </span>
+            <span>{hasHostKey ? t("host.withKey") : t("host.noKey")}</span>
+            <span>{persistent ? t("host.redis") : t("host.localDemo")}</span>
           </div>
         </aside>
 
@@ -760,53 +754,66 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
             <article className="question-card" key={question.id}>
               <div className="question-card-top">
                 <strong>
-                  {index + 1}. {QUESTION_TYPE_LABELS[question.type]}
+                  {index + 1}. {typeLabel(question.type)}
                 </strong>
-                <div className="question-card-actions">
+                <div className="question-card-tools">
                   <button
                     type="button"
                     onClick={() => moveQuestion(question.id, -1)}
                     disabled={index === 0}
+                    aria-label={`${t("host.moveUp")} ${index + 1}`}
+                    title={t("host.moveUp")}
                   >
-                    ↑
+                    <ArrowUp size={16} strokeWidth={2} />
                   </button>
                   <button
                     type="button"
                     onClick={() => moveQuestion(question.id, 1)}
                     disabled={index === questions.length - 1}
+                    aria-label={`${t("host.moveDown")} ${index + 1}`}
+                    title={t("host.moveDown")}
                   >
-                    ↓
+                    <ArrowDown size={16} strokeWidth={2} />
                   </button>
                   <button
                     type="button"
+                    className="danger"
                     onClick={() => removeQuestion(question.id)}
                     disabled={questions.length <= 1}
+                    aria-label={`${t("host.deleteQuestion")} ${index + 1}`}
+                    title={t("host.deleteQuestion")}
                   >
-                    <Trash2 size={14} />
+                    <Trash2 size={15} strokeWidth={2} />
                   </button>
                 </div>
               </div>
 
               <label>
-                Tipo
+                {t("host.questionType")}
                 <select
                   value={question.type}
                   onChange={(event) =>
                     changeType(question.id, event.target.value as QuestionType)
                   }
                 >
-                  {(Object.keys(QUESTION_TYPE_LABELS) as QuestionType[]).map(
-                    (type) => (
-                      <option key={type} value={type}>
-                        {QUESTION_TYPE_LABELS[type]}
-                      </option>
-                    ),
-                  )}
+                  {(
+                    [
+                      "word-cloud",
+                      "choice",
+                      "scale",
+                      "ranking",
+                      "open",
+                    ] as QuestionType[]
+                  ).map((type) => (
+                    <option key={type} value={type}>
+                      {typeLabel(type)}
+                    </option>
+                  ))}
                 </select>
               </label>
 
               <label>
-                Pregunta
+                {t("host.question")}
                 <input
                   value={question.title}
                   onChange={(event) =>
@@ -816,19 +823,19 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
               </label>
 
               <label>
-                Ayuda / instrucción
+                {t("host.help")}
                 <input
                   value={question.prompt ?? ""}
                   onChange={(event) =>
                     updateQuestion(question.id, { prompt: event.target.value })
                   }
-                  placeholder="Texto corto bajo la pregunta"
+                  placeholder={t("host.helpPlaceholder")}
                 />
               </label>
 
               {needsOptions(question.type) && (
                 <label>
-                  Opciones (una por línea)
+                  {t("host.options")}
                   <textarea
                     rows={Math.max(question.options?.length ?? 3, 3)}
                     value={(question.options ?? []).join("\n")}
@@ -844,9 +851,17 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
           ))}
 
           <div className="add-row">
-            {(Object.keys(QUESTION_TYPE_LABELS) as QuestionType[]).map((type) => (
+            {(
+              [
+                "word-cloud",
+                "choice",
+                "scale",
+                "ranking",
+                "open",
+              ] as QuestionType[]
+            ).map((type) => (
               <button key={type} type="button" onClick={() => addQuestion(type)}>
-                <Plus size={14} /> {QUESTION_TYPE_LABELS[type]}
+                <Plus size={14} /> {typeLabel(type)}
               </button>
             ))}
           </div>
