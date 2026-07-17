@@ -142,6 +142,12 @@ export type RoomState = {
   presenting: boolean;
   carouselIndex: number;
   updatedAt: number;
+  /** SHA-256 hash; never expose to clients. */
+  hostKeyHash?: string;
+};
+
+export type PublicRoomState = Omit<RoomState, "hostKeyHash"> & {
+  hasHostKey: boolean;
 };
 
 export type Participant = {

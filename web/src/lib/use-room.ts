@@ -3,14 +3,14 @@
 import { useCallback, useEffect, useState } from "react";
 import type {
   Participant,
+  PublicRoomState,
   Question,
   ResponseRecord,
   ResponsesBySlide,
-  RoomState,
 } from "./slides";
 
 export type RoomPayload = {
-  room: RoomState;
+  room: PublicRoomState;
   participants: Participant[];
   responsesBySlide: ResponsesBySlide;
   questions: Question[];
@@ -22,6 +22,11 @@ export function useRoom(code = "CURSORCR", interval = 1200) {
   const [error, setError] = useState("");
 
   const refresh = useCallback(async () => {
+    if (!code) {
+      setData(null);
+      setError("");
+      return;
+    }
     try {
       const response = await fetch(`/api/room?code=${code}`, {
         cache: "no-store",
@@ -35,13 +40,17 @@ export function useRoom(code = "CURSORCR", interval = 1200) {
   }, [code]);
 
   useEffect(() => {
+    if (!code) {
+      setData(null);
+      return;
+    }
     const initial = window.setTimeout(() => void refresh(), 0);
     const timer = window.setInterval(() => void refresh(), interval);
     return () => {
       window.clearTimeout(initial);
       window.clearInterval(timer);
     };
-  }, [interval, refresh]);
+  }, [code, interval, refresh]);
 
   return { data, error, refresh };
 }
@@ -104,7 +113,7 @@ export async function saveDeck(input: {
   });
   const result = (await response.json()) as {
     error?: string;
-    room?: RoomState;
+    room?: PublicRoomState;
     questions?: Question[];
   };
   if (!response.ok) throw new Error(result.error ?? "No se pudo guardar.");
@@ -124,7 +133,7 @@ export async function createRoom(input: {
   });
   const result = (await response.json()) as {
     error?: string;
-    room?: RoomState;
+    room?: PublicRoomState;
     questions?: Question[];
   };
   if (!response.ok) throw new Error(result.error ?? "No se pudo crear la sala.");

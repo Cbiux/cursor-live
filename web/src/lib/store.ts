@@ -1,5 +1,10 @@
 import { Redis } from "@upstash/redis";
 import {
+  hashHostKey,
+  hostKeysMatch,
+  isAdminHostKey,
+} from "./host-auth";
+import {
   ROOM_CODE,
   cloneQuestions,
   defaultQuestions,
@@ -268,7 +273,9 @@ export async function getAllResponses(
 export async function clearSession(code = ROOM_CODE) {
   const redis = getRedis();
   const questions = await getQuestions(code);
-  const title = (await getRoom(code)).title;
+  const current = await getRoom(code);
+  const title = current.title;
+  const hostKeyHash = current.hostKeyHash;
 
   if (redis) {
     await redis.del(responsesKey(code));
@@ -276,15 +283,74 @@ export async function clearSession(code = ROOM_CODE) {
     await redis.set(roomKey(code), {
       ...initialRoom(code),
       title,
+      hostKeyHash,
     });
     await redis.set(questionsKey(code), questions);
   } else {
     const bundle = getMemoryBundle(code);
     bundle.responses.clear();
     bundle.participants.clear();
-    bundle.room = { ...initialRoom(code), title };
+    bundle.room = { ...initialRoom(code), title, hostKeyHash };
     bundle.questions = questions;
   }
+}
+
+export async function roomHasHostKey(code = ROOM_CODE) {
+  const room = await getRoom(code);
+  return Boolean(room.hostKeyHash);
+}
+
+export async function claimOrVerifyHostKey(
+  code: string,
+  hostKey: string,
+  options: { allowClaim?: boolean } = {},
+): Promise<{ ok: true } | { ok: false; error: string; status: number }> {
+  const { allowClaim = false } = options;
+  const room = await getRoom(code);
+
+  if (isAdminHostKey(hostKey)) {
+    return { ok: true };
+  }
+
+  if (!room.hostKeyHash) {
+    if (!allowClaim) {
+      return {
+        ok: false,
+        error: "Esta sala aún no tiene clave. Créala o guárdala desde Hostear.",
+        status: 403,
+      };
+    }
+    await setRoom({ hostKeyHash: hashHostKey(hostKey) }, code);
+    return { ok: true };
+  }
+
+  if (!hostKeysMatch(room.hostKeyHash, hostKey)) {
+    return {
+      ok: false,
+      error: "Clave de host incorrecta para esta sala.",
+      status: 401,
+    };
+  }
+
+  return { ok: true };
+}
+
+export async function createUniqueRoomCode() {
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const code = generateRoomCode();
+    const room = await getRoom(code);
+    if (room.hostKeyHash) continue;
+
+    const participants = await getParticipants(code);
+    if (participants.length) continue;
+
+    const responses = await getAllResponses(code);
+    const hasResponses = Object.values(responses).some((list) => list.length);
+    if (hasResponses) continue;
+
+    return code;
+  }
+  return generateRoomCode();
 }
 
 export function isPersistentStoreEnabled() {

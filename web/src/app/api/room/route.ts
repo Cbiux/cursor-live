@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { Question, ResponseValue } from "@/lib/slides";
 import {
+  hashHostKey,
+  toPublicRoom,
+  validateHostKeyInput,
+} from "@/lib/host-auth";
+import {
+  claimOrVerifyHostKey,
   clearSession,
-  generateRoomCode,
+  createUniqueRoomCode,
   getAllResponses,
   getParticipants,
   getQuestions,
@@ -18,22 +24,17 @@ import {
 export const dynamic = "force-dynamic";
 
 function cleanCode(value: string | null) {
-  return normalizeCode(value ?? "CURSORCR") || "CURSORCR";
+  return normalizeCode(value ?? "") || "";
 }
 
-function assertHost(hostKey?: string) {
-  const expectedKey = process.env.HOST_KEY;
-  if (expectedKey && hostKey !== expectedKey) {
-    return NextResponse.json(
-      { error: "Clave de host incorrecta." },
-      { status: 401 },
-    );
-  }
-  return null;
+function authErrorResponse(
+  result: { ok: false; error: string; status: number },
+) {
+  return NextResponse.json({ error: result.error }, { status: result.status });
 }
 
 export async function GET(request: NextRequest) {
-  const code = cleanCode(request.nextUrl.searchParams.get("code"));
+  const code = cleanCode(request.nextUrl.searchParams.get("code")) || "CURSORCR";
   const [room, participants, responsesBySlide, questions] = await Promise.all([
     getRoom(code),
     getParticipants(code),
@@ -43,7 +44,7 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json(
     {
-      room,
+      room: toPublicRoom(room),
       participants,
       responsesBySlide,
       questions,
@@ -75,15 +76,35 @@ export async function POST(request: NextRequest) {
   };
 
   if (body.kind === "create-room") {
-    const authError = assertHost(body.hostKey);
-    if (authError) return authError;
+    const keyError = validateHostKeyInput(body.hostKey);
+    if (keyError) {
+      return NextResponse.json({ error: keyError }, { status: 400 });
+    }
 
-    const code = cleanCode(body.code ?? generateRoomCode());
+    const requested = cleanCode(body.code ?? null);
+    let code = requested;
+
+    if (requested) {
+      const existing = await getRoom(requested);
+      if (existing.hostKeyHash) {
+        return NextResponse.json(
+          {
+            error:
+              "Ese código ya tiene dueño. Elige otro o deja vacío para generar uno.",
+          },
+          { status: 409 },
+        );
+      }
+    } else {
+      code = await createUniqueRoomCode();
+    }
+
     const room = await setRoom(
       {
         title: body.title?.trim() || "Mi experiencia en vivo",
         presenting: false,
         carouselIndex: 0,
+        hostKeyHash: hashHostKey(body.hostKey!),
       },
       code,
     );
@@ -91,14 +112,26 @@ export async function POST(request: NextRequest) {
       ? await saveQuestions(body.questions, code)
       : await getQuestions(code);
 
-    return NextResponse.json({ ok: true, room, questions });
+    return NextResponse.json({
+      ok: true,
+      room: toPublicRoom(room),
+      questions,
+    });
   }
 
   const code = cleanCode(body.code ?? null);
+  if (!code) {
+    return NextResponse.json(
+      { error: "Código de sala requerido." },
+      { status: 400 },
+    );
+  }
 
   if (body.kind === "save-deck") {
-    const authError = assertHost(body.hostKey);
-    if (authError) return authError;
+    const keyError = validateHostKeyInput(body.hostKey);
+    if (keyError) {
+      return NextResponse.json({ error: keyError }, { status: 400 });
+    }
     if (!body.questions?.length) {
       return NextResponse.json(
         { error: "Agrega al menos una pregunta." },
@@ -106,13 +139,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const auth = await claimOrVerifyHostKey(code, body.hostKey!, {
+      allowClaim: true,
+    });
+    if (!auth.ok) return authErrorResponse(auth);
+
     if (body.title?.trim()) {
       await setRoom({ title: body.title.trim() }, code);
     }
 
     const questions = await saveQuestions(body.questions, code);
     const room = await getRoom(code);
-    return NextResponse.json({ ok: true, room, questions });
+    return NextResponse.json({
+      ok: true,
+      room: toPublicRoom(room),
+      questions,
+    });
   }
 
   if (body.kind === "join") {
@@ -173,8 +215,15 @@ export async function POST(request: NextRequest) {
   }
 
   if (body.kind === "host") {
-    const authError = assertHost(body.hostKey);
-    if (authError) return authError;
+    const keyError = validateHostKeyInput(body.hostKey);
+    if (keyError) {
+      return NextResponse.json({ error: keyError }, { status: 400 });
+    }
+
+    const auth = await claimOrVerifyHostKey(code, body.hostKey!, {
+      allowClaim: false,
+    });
+    if (!auth.ok) return authErrorResponse(auth);
 
     const room = await getRoom(code);
     const questions = await getQuestions(code);
@@ -201,13 +250,13 @@ export async function POST(request: NextRequest) {
       await clearSession(code);
       return NextResponse.json({
         ok: true,
-        room: await getRoom(code),
+        room: toPublicRoom(await getRoom(code)),
         questions: await getQuestions(code),
       });
     }
 
     const next = await setRoom({ presenting, carouselIndex }, code);
-    return NextResponse.json({ ok: true, room: next });
+    return NextResponse.json({ ok: true, room: toPublicRoom(next) });
   }
 
   return NextResponse.json({ error: "Acción inválida." }, { status: 400 });
