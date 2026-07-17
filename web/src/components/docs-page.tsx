@@ -263,8 +263,13 @@ export function DocsPage() {
           <h2>{es ? "Código fuente" : "Source code"}</h2>
           <p>
             {es
-              ? "El proyecto es open source. Reporta bugs, deja feedback o contribuye en el repositorio del meetup."
-              : "The project is open source. Report bugs, leave feedback, or contribute in the meetup repository."}
+              ? "El proyecto es open source. Reporta bugs, deja feedback o contribuye en GitHub."
+              : "The project is open source. Report bugs, leave feedback, or contribute on GitHub."}
+          </p>
+          <p>
+            <a href="https://github.com/Cbiux/cursor-live" target="_blank" rel="noreferrer">
+              github.com/Cbiux/cursor-live
+            </a>
           </p>
         </section>
       </article>
