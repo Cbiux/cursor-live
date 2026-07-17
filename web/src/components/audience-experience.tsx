@@ -46,12 +46,13 @@ export function AudienceExperience({ code }: { code: string }) {
   const rank = Array.isArray(value) ? value : [];
 
   const enter = async () => {
-    const clean = name.trim();
-    if (!clean || !participantId) return;
+    if (!participantId) return;
+    const clean = name.trim() || "Anónimo";
     setJoining(true);
     setMessage("");
     try {
       await joinRoom({ code, participantId, name: clean });
+      setName(clean);
       window.localStorage.setItem("cursor-live-name", clean);
       setJoined(true);
       setStep(0);
@@ -72,10 +73,12 @@ export function AudienceExperience({ code }: { code: string }) {
     }
   };
 
+  const displayName = name.trim() || "Anónimo";
+
   const canSubmit =
     question?.type === "ranking"
       ? rank.length === 3
-      : value !== "" && Boolean(name.trim());
+      : value !== "";
 
   const submit = async () => {
     if (!question || !canSubmit || sending) return;
@@ -85,7 +88,7 @@ export function AudienceExperience({ code }: { code: string }) {
       await sendResponse({
         code,
         participantId,
-        name: name.trim(),
+        name: displayName,
         slideId: question.id,
         value,
       });
@@ -122,13 +125,14 @@ export function AudienceExperience({ code }: { code: string }) {
         <p className="eyebrow">SALA {code}</p>
         <h1>Escribe tu nombre para entrar</h1>
         <p className="mobile-prompt">
-          Como en Kahoot: tu nombre aparecerá en la pantalla mientras respondes.
+          Tu nombre aparecerá en la pantalla mientras respondes. Si lo dejas
+          vacío, sales como Anónimo.
         </p>
         <input
           className="text-input name-input"
           value={name}
           onChange={(event) => setName(event.target.value.slice(0, 24))}
-          placeholder="Tu nombre o nick"
+          placeholder="Tu nombre o nick (opcional)"
           autoFocus
           maxLength={24}
           onKeyDown={(event) => {
@@ -137,7 +141,7 @@ export function AudienceExperience({ code }: { code: string }) {
         />
         <button
           className="submit-button"
-          disabled={!name.trim() || joining}
+          disabled={joining}
           onClick={() => void enter()}
         >
           {joining ? (
@@ -162,7 +166,7 @@ export function AudienceExperience({ code }: { code: string }) {
           <Radio size={16} />
           LISTO
         </div>
-        <p className="eyebrow">HOLA, {name.toUpperCase()}</p>
+        <p className="eyebrow">HOLA, {displayName.toUpperCase()}</p>
         <h1>Estás dentro.</h1>
         <p className="muted">
           Cuando el host pulse comenzar, responderás las {questions.length}{" "}
@@ -183,7 +187,7 @@ export function AudienceExperience({ code }: { code: string }) {
           <Check size={16} />
           LISTO
         </div>
-        <p className="eyebrow">GRACIAS, {name.toUpperCase()}</p>
+        <p className="eyebrow">GRACIAS, {displayName.toUpperCase()}</p>
         <h1>Tus respuestas ya están en pantalla.</h1>
         <p className="muted">
           Mira el carrusel del host. Ya puedes bajar el teléfono.
@@ -205,7 +209,7 @@ export function AudienceExperience({ code }: { code: string }) {
     <main className="mobile-shell response-screen">
       <div className="mobile-topbar">
         <span className="live-pill">
-          <Radio size={13} /> {name}
+          <Radio size={13} /> {displayName}
         </span>
         <span>
           {step + 1} / {questions.length}

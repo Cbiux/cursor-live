@@ -389,7 +389,10 @@ const DEMO_NAMES = [
   "Ana", "Bruno", "Camila", "Diego", "Elena", "Fabián", "Gina", "Hugo",
   "Irene", "Jorge", "Karla", "Luis", "Maya", "Nico", "Olga", "Pablo",
   "Quinn", "Rosa", "Sofía", "Tomás", "Uma", "Valeria", "Wendy", "Ximena",
-  "Yago", "Zoe", "Andrés", "Beatriz", "Carlos", "Daniela",
+  "Yago", "Zoe", "Andrés", "Beatriz", "Carlos", "Daniela", "Esteban",
+  "Fernanda", "Gabriel", "Helena", "Iván", "Jimena", "Kevin", "Laura",
+  "Mateo", "Nadia", "Oscar", "Patricia", "Rafael", "Sara", "Thiago",
+  "Úrsula", "Víctor", "Walter", "Yazmín", "Zacarías",
 ];
 
 const DEMO_PROJECTS = [
@@ -397,31 +400,78 @@ const DEMO_PROJECTS = [
   "Ticket POS", "Green Route", "Study Buddy", "Hack CR", "Prompt Lab",
   "Dev Radar", "Ship Fast", "Cafe Finder", "Code Coach", "Live Poll",
   "Focus Timer", "Repo Digest", "Slide Sync", "Voice Notes", "CR Jobs",
+  "Pixel Farm", "Noise Cancel", "Mapa Local", "Open Desk", "Bug Hunt",
+  "Skill Tree", "Night Deploy", "Coffee Queue", "Token Vault", "Soft Launch",
+  "Pulse Check", "Draft Room", "Edge Kit", "Form Wizard", "Clip Board",
+  "Story Engine", "Data Garden", "Portable API", "Inbox Zero", "Lane Switch",
+  "Quick Sketch", "Mentor Match", "Cloud Scratch", "Tiny CRM", "Wave Rider",
+  "Nova Board", "Signal Tap", "Craft Mode", "Orbit Docs", "Bright Path",
+  "Kernel Lab", "Soft Fork", "Paper Trail", "Glow Up", "Deep Dive",
+  "Fast Lane", "Quiet Room", "Build Log", "Spark Deck", "Clear Cache",
+  "North Star", "Side Quest", "Echo Chamber", "Grid Lock", "Blue Print",
+  "Open Source", "Late Night", "First Commit", "Hot Reload", "Cold Start",
+  "Soft Skills", "Hard Mode", "User Story", "Dark Theme", "Light Mode",
+  "Ship It", "Hold On", "Try Again", "Keep Going", "Start Over",
+  "Next Slide", "Live Feed", "Name Wall", "Word Cloud", "Rank Board",
+  "Scale Meter", "Open Card", "Join Code", "Host Key", "Demo Seed",
+  "Cursor Live", "Meetup CR", "Costa Rica", "San José", "Cartago Hub",
+  "Heredia Lab", "Puntarenas", "Guanacaste", "Limón Port", "Alajuela Dev",
 ];
 
 const DEMO_WORDS = [
   "aprender", "network", "cursor", "comunidad", "ideas", "empleos",
   "proyectos", "mentores", "IA", "inspiración", "amigos", "código",
+  "agente", "modelo", "prompt", "deploy", "producto", "diseño",
+  "datos", "startup", "freelance", "remoto", "oficina", "meetup",
+  "coffee", "demo", "pitch", "feedback", "crecimiento", "carrera",
+  "portfolio", "github", "opensource", "typescript", "python", "react",
+  "nextjs", "vercel", "redis", "api", "mcp", "herramientas",
+  "automatizar", "refactor", "tests", "bugs", "docs", "pairing",
+  "focus", "flow", "velocidad", "calidad", "impacto", "usuarios",
+  "clientes", "equipo", "liderazgo", "aprendizaje", "curiosidad", "reto",
+  "experimentar", "prototipo", "mvp", "lanzar", "iterar", "medir",
+  "analítica", "seguridad", "privacidad", "accesibilidad", "ux", "ui",
+  "mobile", "web", "cloud", "edge", "latency", "escala",
+  "costos", "pricing", "ventas", "marketing", "contenido", "comunidadtech",
+  "hackathon", "workshop", "charla", "networking", "oportunidad", "empleo",
+  "beca", "curso", "certificación", "ingles", "español", "remotoCR",
+  "híbrido", "freelanceCR", "sideproject", "hobby", "pasión", "misión",
 ];
+
+function uniqueShuffle<T>(items: T[], seed: number): T[] {
+  const next = [...items];
+  for (let i = next.length - 1; i > 0; i -= 1) {
+    const j = (seed * 31 + i * 17) % (i + 1);
+    const tmp = next[i];
+    next[i] = next[j];
+    next[j] = tmp;
+  }
+  return next;
+}
 
 function demoValueFor(question: Question, index: number): ResponseValue {
   if (question.type === "word-cloud") {
-    return DEMO_WORDS[index % DEMO_WORDS.length];
+    const base = DEMO_WORDS[index % DEMO_WORDS.length];
+    // Keep values unique even past the word list length.
+    return index < DEMO_WORDS.length ? base : `${base}${index}`;
   }
-  if (question.type === "choice" || question.type === "ranking") {
+  if (question.type === "choice") {
     const options = question.options ?? ["Opción 1", "Opción 2", "Opción 3"];
-    if (question.type === "ranking") {
-      const shuffled = [...options].sort(
-        (a, b) => ((index + a.length) % 7) - ((index + b.length) % 7),
-      );
-      return shuffled.slice(0, Math.min(3, shuffled.length));
-    }
-    return options[index % options.length];
+    // Spread across options with a prime stride so consecutive seeds differ.
+    return options[(index * 7) % options.length];
+  }
+  if (question.type === "ranking") {
+    const options = question.options ?? ["Opción 1", "Opción 2", "Opción 3"];
+    return uniqueShuffle(options, index + 1).slice(0, Math.min(3, options.length));
   }
   if (question.type === "scale") {
-    return index % 11;
+    // Visit every score before repeating, with offset per seed batch.
+    return (index * 3) % 11;
   }
-  return DEMO_PROJECTS[index % DEMO_PROJECTS.length];
+  const project = DEMO_PROJECTS[index % DEMO_PROJECTS.length];
+  return index < DEMO_PROJECTS.length
+    ? project
+    : `${project} v${Math.floor(index / DEMO_PROJECTS.length) + 1}`;
 }
 
 export async function seedDemoResponses(input: {
@@ -431,10 +481,9 @@ export async function seedDemoResponses(input: {
   const code = input.code ?? ROOM_CODE;
   const count = Math.max(1, Math.min(100, Math.floor(input.count)));
   const questions = await getQuestions(code);
-  const now = Date.now();
 
   for (let index = 0; index < count; index += 1) {
-    const name = `${DEMO_NAMES[index % DEMO_NAMES.length]} ${index + 1}`;
+    const name = `${DEMO_NAMES[index % DEMO_NAMES.length]}${index + 1}`;
     const participantId = `demo-${code}-${index}`;
     await saveParticipant({ code, id: participantId, name });
 
@@ -446,7 +495,6 @@ export async function seedDemoResponses(input: {
         slideId: question.id,
         value: demoValueFor(question, index),
       });
-      void now;
     }
   }
 

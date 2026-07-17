@@ -141,8 +141,8 @@ export function DocsPage() {
             </li>
             <li>
               {es
-                ? "Escribe tu nombre (como en Kahoot)."
-                : "Enter your name (Kahoot-style)."}
+                ? "Escribe tu nombre (opcional). Si lo dejas vacío, sales como Anónimo."
+                : "Enter your name (optional). Leave it blank to join as Anonymous."}
             </li>
             <li>
               {es

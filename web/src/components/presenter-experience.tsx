@@ -374,10 +374,11 @@ export function PresenterExperience({ code }: { code: string }) {
         <section className="lobby-stage">
           <div>
             <p className="eyebrow">LOBBY</p>
-            <h1>Escribe tu nombre y entra.</h1>
+            <h1>Escanea, escribe tu nombre y entra.</h1>
             <p className="stage-prompt">
-              {questions.length} preguntas listas. Todos responden de una sola
-              vez; aquí verás el carrusel de resultados.
+              {questions.length} preguntas listas. Si no ponen nombre, salen
+              como Anónimo. Todos responden de una sola vez; aquí verás el
+              carrusel de resultados.
             </p>
             <div className="join-card">
               <QRCodeSVG

@@ -265,9 +265,9 @@ export async function POST(request: NextRequest) {
   }
 
   if (body.kind === "join") {
-    if (!body.participantId || !body.name?.trim()) {
+    if (!body.participantId) {
       return NextResponse.json(
-        { error: "Escribe tu nombre para entrar." },
+        { error: "No se pudo identificar al participante." },
         { status: 400 },
       );
     }
@@ -275,7 +275,7 @@ export async function POST(request: NextRequest) {
     const participant = await saveParticipant({
       code,
       id: body.participantId,
-      name: body.name,
+      name: body.name?.trim() || "Anónimo",
     });
     return NextResponse.json({ ok: true, participant });
   }
@@ -283,7 +283,6 @@ export async function POST(request: NextRequest) {
   if (body.kind === "respond") {
     if (
       !body.participantId ||
-      !body.name?.trim() ||
       !body.slideId ||
       body.value === undefined ||
       body.value === ""
@@ -314,7 +313,7 @@ export async function POST(request: NextRequest) {
     const record = await saveResponse({
       code,
       participantId: body.participantId,
-      name: body.name,
+      name: body.name?.trim() || "Anónimo",
       slideId: body.slideId,
       value: body.value,
     });
