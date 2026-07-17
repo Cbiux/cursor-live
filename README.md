@@ -2,6 +2,9 @@
 
 Experiencia interactiva en vivo tipo Mentimeter: hostea, edita preguntas y únete desde el celular.
 
+**Live:** [https://cursor-live.vercel.app](https://cursor-live.vercel.app)  
+**Repo:** [github.com/Cbiux/cursor-live](https://github.com/Cbiux/cursor-live)
+
 ## App
 
 El código de la aplicación vive en [`web/`](./web).
@@ -27,12 +30,13 @@ Sin Redis funciona en demo local (estado en memoria, un solo proceso).
 
 ## Producción (Vercel)
 
-1. Root Directory: `web`
-2. Instala Upstash Redis (Marketplace) o define:
+Proyecto: `cursor-live` · Root Directory: `web`
+
+1. Instala Upstash Redis (Marketplace) o define:
    - `UPSTASH_REDIS_REST_URL`
    - `UPSTASH_REDIS_REST_TOKEN`
-3. Define `HOST_KEY` para proteger controles del host
-4. Despliega
+2. Define `HOST_KEY` para proteger controles del host
+3. Despliega desde `web/` o con Git (rootDirectory = `web`)
 
 ## Guion del meetup
 
