@@ -96,6 +96,11 @@ const dictionary = {
     "host.quickDemo": "Demo rápida",
     "host.responsesPrompt": "Prompt respuestas",
     "host.uploadResponses": "Subir respuestas",
+    "host.pasteResponses": "Pegar respuestas (Markdown)",
+    "host.applyResponses": "Aplicar respuestas pegadas",
+    "host.responsesSteps":
+      "1) Copia el prompt · 2) Pégalo en una IA · 3) Pega el resultado aquí o sube el .md.",
+    "host.msgNeedResponsesMd": "Pega el Markdown de respuestas o sube un archivo .md.",
     "host.questionsCount": "preguntas",
     "host.inLobby": "en lobby",
     "host.withKey": "Con clave",
@@ -261,6 +266,11 @@ const dictionary = {
     "host.quickDemo": "Quick demo",
     "host.responsesPrompt": "Responses prompt",
     "host.uploadResponses": "Upload responses",
+    "host.pasteResponses": "Paste responses (Markdown)",
+    "host.applyResponses": "Apply pasted responses",
+    "host.responsesSteps":
+      "1) Copy the prompt · 2) Paste it into an AI · 3) Paste the result here or upload the .md.",
+    "host.msgNeedResponsesMd": "Paste responses Markdown or upload a .md file.",
     "host.questionsCount": "questions",
     "host.inLobby": "in lobby",
     "host.withKey": "Has key",

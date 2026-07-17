@@ -106,6 +106,7 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
     defaultQuestions[0]?.id ?? 0,
   );
   const [questionsMdPaste, setQuestionsMdPaste] = useState("");
+  const [responsesMdPaste, setResponsesMdPaste] = useState("");
   const [dirty, setDirty] = useState(false);
   const hydratedCodeRef = useRef("");
   const ownedToastCodeRef = useRef("");
@@ -421,11 +422,14 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
     }
   };
 
-  const importResponsesFile = async (file: File) => {
+  const importResponsesMarkdown = async (markdown: string) => {
     if (!requireAccess()) return;
+    if (!markdown.trim()) {
+      showToast(t("host.msgNeedResponsesMd"), "error");
+      return;
+    }
     setSaving(true);
     try {
-      const markdown = await file.text();
       const result = await importResponsesMd({
         code,
         hostKey,
@@ -433,6 +437,7 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
         slideId: toolsQuestion?.id,
       });
       rememberKey(code, hostKey);
+      setResponsesMdPaste("");
       await refresh();
       showToast(
         `${t("host.imported")} ${result.imported ?? 0} ${t("host.responses")}` +
@@ -449,6 +454,12 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
       setSaving(false);
       if (responsesFileRef.current) responsesFileRef.current.value = "";
     }
+  };
+
+  const importResponsesFile = async (file: File) => {
+    const markdown = await file.text();
+    setResponsesMdPaste(markdown);
+    await importResponsesMarkdown(markdown);
   };
 
   if (code && !data) {
@@ -795,6 +806,34 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
                 <FileUp size={15} /> {t("host.uploadResponses")}
               </button>
             </div>
+
+            <label className="md-paste-label">
+              {t("host.pasteResponses")}
+              <textarea
+                className="md-paste-area"
+                rows={7}
+                value={responsesMdPaste}
+                onChange={(event) => setResponsesMdPaste(event.target.value)}
+                placeholder={RESPONSES_MD_EXAMPLE}
+                spellCheck={false}
+              />
+            </label>
+
+            <button
+              type="button"
+              className="secondary-button"
+              disabled={saving || !code || !responsesMdPaste.trim()}
+              onClick={() => void importResponsesMarkdown(responsesMdPaste)}
+            >
+              {saving ? (
+                <LoaderCircle className="spin" size={16} />
+              ) : (
+                <Check size={16} />
+              )}
+              {t("host.applyResponses")}
+            </button>
+            <p className="studio-hint">{t("host.responsesSteps")}</p>
+
             <input
               ref={responsesFileRef}
               type="file"
