@@ -1,3 +1,4 @@
+import { getCache } from "@vercel/functions";
 import { Redis } from "@upstash/redis";
 import {
   hashHostKey,
@@ -35,6 +36,8 @@ type MemoryStore = {
 declare global {
   var __cursorMeetupStore: MemoryStore | undefined;
 }
+
+const SESSION_TTL_SECONDS = 60 * 60 * 12;
 
 function initialRoom(code: string): RoomState {
   return {
@@ -98,6 +101,39 @@ function getRedis() {
   return hasRedis ? Redis.fromEnv() : null;
 }
 
+function runtimeCache() {
+  return getCache({ namespace: "cursor-live" });
+}
+
+async function cacheGet<T>(key: string): Promise<T | null> {
+  try {
+    const value = await runtimeCache().get(key);
+    return (value as T | undefined) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function cacheSet(key: string, value: unknown, tags: string[]) {
+  try {
+    await runtimeCache().set(key, value, {
+      ttl: SESSION_TTL_SECONDS,
+      tags,
+      name: key,
+    });
+  } catch {
+    /* Local/dev without Runtime Cache support. */
+  }
+}
+
+async function cacheDelete(key: string) {
+  try {
+    await runtimeCache().delete(key);
+  } catch {
+    /* ignore */
+  }
+}
+
 function roomKey(code: string) {
   return `cursor-live:room:${code}`;
 }
@@ -114,16 +150,27 @@ function responsesKey(code: string) {
   return `cursor-live:responses:${code}`;
 }
 
+function roomTags(code: string) {
+  return [`room:${code}`];
+}
+
 export async function getRoom(code = ROOM_CODE): Promise<RoomState> {
   const redis = getRedis();
-  if (!redis) return getMemoryBundle(code).room;
+  if (redis) {
+    const room = await redis.get<RoomState>(roomKey(code));
+    if (room) return room;
+    const next = initialRoom(code);
+    await redis.set(roomKey(code), next);
+    return next;
+  }
 
-  const room = await redis.get<RoomState>(roomKey(code));
-  if (room) return room;
+  const cached = await cacheGet<RoomState>(roomKey(code));
+  if (cached) {
+    getMemoryBundle(code).room = cached;
+    return cached;
+  }
 
-  const next = initialRoom(code);
-  await redis.set(roomKey(code), next);
-  return next;
+  return getMemoryBundle(code).room;
 }
 
 export async function setRoom(
@@ -138,6 +185,7 @@ export async function setRoom(
     await redis.set(roomKey(code), next);
   } else {
     getMemoryBundle(code).room = next;
+    await cacheSet(roomKey(code), next, roomTags(code));
   }
 
   return next;
@@ -145,14 +193,21 @@ export async function setRoom(
 
 export async function getQuestions(code = ROOM_CODE): Promise<Question[]> {
   const redis = getRedis();
-  if (!redis) return cloneQuestions(getMemoryBundle(code).questions);
+  if (redis) {
+    const questions = await redis.get<Question[]>(questionsKey(code));
+    if (questions?.length) return questions;
+    const defaults = cloneQuestions(defaultQuestions);
+    await redis.set(questionsKey(code), defaults);
+    return defaults;
+  }
 
-  const questions = await redis.get<Question[]>(questionsKey(code));
-  if (questions?.length) return questions;
+  const cached = await cacheGet<Question[]>(questionsKey(code));
+  if (cached?.length) {
+    getMemoryBundle(code).questions = cached;
+    return cloneQuestions(cached);
+  }
 
-  const defaults = cloneQuestions(defaultQuestions);
-  await redis.set(questionsKey(code), defaults);
-  return defaults;
+  return cloneQuestions(getMemoryBundle(code).questions);
 }
 
 export async function saveQuestions(
@@ -174,6 +229,7 @@ export async function saveQuestions(
     await redis.set(questionsKey(code), cleaned);
   } else {
     getMemoryBundle(code).questions = cleaned;
+    await cacheSet(questionsKey(code), cleaned, roomTags(code));
   }
 
   await setRoom({ carouselIndex: 0 }, code);
@@ -196,7 +252,17 @@ export async function saveParticipant(input: {
   if (redis) {
     await redis.hset(participantsKey(code), { [participant.id]: participant });
   } else {
-    getMemoryBundle(code).participants.set(participant.id, participant);
+    const bundle = getMemoryBundle(code);
+    bundle.participants.set(participant.id, participant);
+    const all = Object.fromEntries(bundle.participants);
+    const cached =
+      (await cacheGet<Record<string, Participant>>(participantsKey(code))) ??
+      {};
+    cached[participant.id] = participant;
+    // Prefer merged cache + memory so other instances see joins.
+    const merged = { ...cached, ...all };
+    bundle.participants = new Map(Object.entries(merged));
+    await cacheSet(participantsKey(code), merged, roomTags(code));
   }
 
   return participant;
@@ -214,7 +280,12 @@ export async function getParticipants(
         participantsKey(code),
       )) ?? {};
   } else {
-    all = Object.fromEntries(getMemoryBundle(code).participants);
+    const cached =
+      (await cacheGet<Record<string, Participant>>(participantsKey(code))) ??
+      {};
+    const memory = Object.fromEntries(getMemoryBundle(code).participants);
+    all = { ...cached, ...memory };
+    getMemoryBundle(code).participants = new Map(Object.entries(all));
   }
 
   return Object.values(all).sort((a, b) => a.joinedAt - b.joinedAt);
@@ -241,7 +312,15 @@ export async function saveResponse(input: {
   if (redis) {
     await redis.hset(responsesKey(code), { [field]: record });
   } else {
-    getMemoryBundle(code).responses.set(field, record);
+    const bundle = getMemoryBundle(code);
+    bundle.responses.set(field, record);
+    const cached =
+      (await cacheGet<Record<string, ResponseRecord>>(responsesKey(code))) ??
+      {};
+    const memory = Object.fromEntries(bundle.responses);
+    const merged = { ...cached, ...memory, [field]: record };
+    bundle.responses = new Map(Object.entries(merged));
+    await cacheSet(responsesKey(code), merged, roomTags(code));
   }
 
   return record;
@@ -259,7 +338,12 @@ export async function getAllResponses(
         responsesKey(code),
       )) ?? {};
   } else {
-    all = Object.fromEntries(getMemoryBundle(code).responses);
+    const cached =
+      (await cacheGet<Record<string, ResponseRecord>>(responsesKey(code))) ??
+      {};
+    const memory = Object.fromEntries(getMemoryBundle(code).responses);
+    all = { ...cached, ...memory };
+    getMemoryBundle(code).responses = new Map(Object.entries(all));
   }
 
   const bySlide: ResponsesBySlide = {};
@@ -281,22 +365,23 @@ export async function clearSession(code = ROOM_CODE) {
   const current = await getRoom(code);
   const title = current.title;
   const hostKeyHash = current.hostKeyHash;
+  const clearedRoom = { ...initialRoom(code), title, hostKeyHash };
 
   if (redis) {
     await redis.del(responsesKey(code));
     await redis.del(participantsKey(code));
-    await redis.set(roomKey(code), {
-      ...initialRoom(code),
-      title,
-      hostKeyHash,
-    });
+    await redis.set(roomKey(code), clearedRoom);
     await redis.set(questionsKey(code), questions);
   } else {
     const bundle = getMemoryBundle(code);
     bundle.responses.clear();
     bundle.participants.clear();
-    bundle.room = { ...initialRoom(code), title, hostKeyHash };
+    bundle.room = clearedRoom;
     bundle.questions = questions;
+    await cacheDelete(responsesKey(code));
+    await cacheDelete(participantsKey(code));
+    await cacheSet(roomKey(code), clearedRoom, roomTags(code));
+    await cacheSet(questionsKey(code), questions, roomTags(code));
   }
 }
 
@@ -484,10 +569,14 @@ export async function createUniqueRoomCode() {
 }
 
 export function isPersistentStoreEnabled() {
-  return Boolean(
+  if (
     process.env.UPSTASH_REDIS_REST_URL &&
-      process.env.UPSTASH_REDIS_REST_TOKEN,
-  );
+    process.env.UPSTASH_REDIS_REST_TOKEN
+  ) {
+    return true;
+  }
+  // Runtime Cache is shared across serverless instances on Vercel.
+  return Boolean(process.env.VERCEL);
 }
 
 export function normalizeCode(value: string) {

@@ -231,17 +231,32 @@ export function PresenterExperience({ code }: { code: string }) {
   const [notice, setNotice] = useState("");
   const [joinUrl, setJoinUrl] = useState(`/join?code=${code}`);
   const [autoPlay, setAutoPlay] = useState(true);
+  const [localPresenting, setLocalPresenting] = useState(false);
+  const [localCarouselIndex, setLocalCarouselIndex] = useState(0);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
       setHostKey(readRoomHostKey(code));
       setJoinUrl(`${window.location.origin}/join?code=${code}`);
+      setLocalPresenting(false);
+      setLocalCarouselIndex(0);
     }, 0);
     return () => window.clearTimeout(timer);
   }, [code]);
 
+  useEffect(() => {
+    if (!data) return;
+    if (data.room.presenting) {
+      setLocalPresenting(true);
+      setLocalCarouselIndex(data.room.carouselIndex);
+    }
+  }, [data]);
+
   const questions = data?.questions ?? [];
-  const carouselIndex = data?.room.carouselIndex ?? 0;
+  const presenting = Boolean(data?.room.presenting || localPresenting);
+  const carouselIndex = data?.room.presenting
+    ? (data.room.carouselIndex ?? 0)
+    : localCarouselIndex;
   const question = questions[carouselIndex] ?? questions[0];
   const responses = useMemo(
     () => (question ? responsesFor(data?.responsesBySlide, question.id) : []),
@@ -259,7 +274,7 @@ export function PresenterExperience({ code }: { code: string }) {
   );
 
   useEffect(() => {
-    if (!data?.room.presenting || !autoPlay || questions.length < 2) return;
+    if (!presenting || !autoPlay || questions.length < 2) return;
     const savedKey = readRoomHostKey(code);
     if (!savedKey) return;
     const timer = window.setInterval(() => {
@@ -268,13 +283,16 @@ export function PresenterExperience({ code }: { code: string }) {
         hostKey: readRoomHostKey(code),
         action: "next",
       })
-        .then(() => refresh())
+        .then(() => {
+          setLocalCarouselIndex((current) => (current + 1) % questions.length);
+          return refresh();
+        })
         .catch(() => {
           /* Ignore transient host/auth errors during autoplay. */
         });
     }, 8000);
     return () => window.clearInterval(timer);
-  }, [autoPlay, code, data?.room.presenting, questions.length, refresh]);
+  }, [autoPlay, code, presenting, questions.length, refresh]);
 
   const act = async (
     action: "start" | "stop" | "next" | "previous" | "set" | "reset",
@@ -289,6 +307,25 @@ export function PresenterExperience({ code }: { code: string }) {
     try {
       await hostAction({ code, hostKey, action, targetIndex });
       writeRoomHostKey(code, hostKey);
+      if (action === "start") {
+        setLocalPresenting(true);
+        setLocalCarouselIndex(0);
+      } else if (action === "stop" || action === "reset") {
+        setLocalPresenting(false);
+        setLocalCarouselIndex(0);
+      } else if (action === "next") {
+        setLocalCarouselIndex((current) =>
+          questions.length ? (current + 1) % questions.length : 0,
+        );
+      } else if (action === "previous") {
+        setLocalCarouselIndex((current) =>
+          questions.length
+            ? (current - 1 + questions.length) % questions.length
+            : 0,
+        );
+      } else if (action === "set" && typeof targetIndex === "number") {
+        setLocalCarouselIndex(targetIndex);
+      }
       await refresh();
     } catch (cause) {
       setNotice(
@@ -308,7 +345,7 @@ export function PresenterExperience({ code }: { code: string }) {
     );
   }
 
-  if (!data.room.presenting) {
+  if (!presenting) {
     return (
       <main className="presenter-shell lobby-shell">
         <header className="presenter-header">
@@ -342,13 +379,6 @@ export function PresenterExperience({ code }: { code: string }) {
               {questions.length} preguntas listas. Todos responden de una sola
               vez; aquí verás el carrusel de resultados.
             </p>
-            {!data.persistent && (
-              <p className="control-notice lobby-persist-warning">
-                Esta sesión aún no tiene almacenamiento compartido: al
-                reiniciar o cambiar de servidor puede perderse la sala. Usa la
-                misma clave y vuelve a guardar desde Hostear si te saca.
-              </p>
-            )}
             <div className="join-card">
               <QRCodeSVG
                 value={joinUrl}

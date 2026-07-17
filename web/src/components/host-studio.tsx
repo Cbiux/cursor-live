@@ -77,6 +77,8 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
     defaultQuestions[0]?.id ?? 0,
   );
   const [questionsMdPaste, setQuestionsMdPaste] = useState("");
+  const [dirty, setDirty] = useState(false);
+  const hydratedCodeRef = useRef("");
   const questionsFileRef = useRef<HTMLInputElement>(null);
   const responsesFileRef = useRef<HTMLInputElement>(null);
 
@@ -89,7 +91,12 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
 
   useEffect(() => {
     if (!data || !code) return;
+    // Don't clobber in-progress edits when the room poll refreshes.
+    if (hydratedCodeRef.current === code && dirty) return;
+
     const timer = window.setTimeout(() => {
+      hydratedCodeRef.current = code;
+      setDirty(false);
       setTitle(data.room.title || "Mi experiencia en vivo");
       setQuestions(cloneQuestions(data.questions));
       setToolsQuestionId((current) =>
@@ -104,13 +111,16 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
       }
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [code, data]);
+  }, [code, data, dirty]);
 
   const rememberKey = (nextCode: string, key: string) => {
     writeRoomHostKey(nextCode, key);
   };
 
+  const markDirty = () => setDirty(true);
+
   const updateQuestion = (id: number, patch: Partial<Question>) => {
+    markDirty();
     setQuestions((current) =>
       current.map((question) =>
         question.id === id ? { ...question, ...patch } : question,
@@ -119,6 +129,7 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
   };
 
   const changeType = (id: number, type: QuestionType) => {
+    markDirty();
     setQuestions((current) =>
       current.map((question) => {
         if (question.id !== id) return question;
@@ -135,6 +146,7 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
   };
 
   const addQuestion = (type: QuestionType = "choice") => {
+    markDirty();
     setQuestions((current) => [
       ...current,
       createEmptyQuestion(type, newId()),
@@ -142,12 +154,14 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
   };
 
   const removeQuestion = (id: number) => {
+    markDirty();
     setQuestions((current) =>
       current.length <= 1 ? current : current.filter((item) => item.id !== id),
     );
   };
 
   const moveQuestion = (id: number, direction: -1 | 1) => {
+    markDirty();
     setQuestions((current) => {
       const index = current.findIndex((item) => item.id === id);
       const target = index + direction;
@@ -178,6 +192,8 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
     try {
       await saveDeck({ code, hostKey, title, questions });
       rememberKey(code, hostKey);
+      setDirty(false);
+      hydratedCodeRef.current = "";
       await refresh();
       setMessage("Guardado. Usa la misma clave para presentar y gestionar.");
     } catch (cause) {
@@ -203,6 +219,8 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
       const nextCode = result.room?.code;
       if (!nextCode) throw new Error("No se generó el código.");
       rememberKey(nextCode, hostKey);
+      setDirty(false);
+      hydratedCodeRef.current = "";
       const number = extractCursorNumber(nextCode);
       if (number) setRoomNumber(number);
       setMessage(
@@ -261,6 +279,8 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
         setQuestions(cloneQuestions(result.questions));
       }
       setQuestionsMdPaste("");
+      setDirty(false);
+      hydratedCodeRef.current = code;
       await refresh();
       window.history.replaceState({}, "", `/host?code=${code}`);
       setMessage(
@@ -390,7 +410,10 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
             Título del evento
             <input
               value={title}
-              onChange={(event) => setTitle(event.target.value)}
+              onChange={(event) => {
+                markDirty();
+                setTitle(event.target.value);
+              }}
               placeholder="Nombre de tu meetup"
             />
           </label>
