@@ -26,6 +26,9 @@ import {
   QUESTION_TYPE_LABELS,
   cloneQuestions,
   createEmptyQuestion,
+  DEFAULT_AUDIENCE_JOIN_PROMPT,
+  DEFAULT_AUDIENCE_WAITING_HEADLINE,
+  DEFAULT_AUDIENCE_WAITING_PROMPT,
   DEFAULT_LOBBY_HEADLINE,
   DEFAULT_LOBBY_PROMPT,
   DEFAULT_ROOM_TITLE,
@@ -72,6 +75,15 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
   const [title, setTitle] = useState(DEFAULT_ROOM_TITLE);
   const [lobbyHeadline, setLobbyHeadline] = useState(DEFAULT_LOBBY_HEADLINE);
   const [lobbyPrompt, setLobbyPrompt] = useState(DEFAULT_LOBBY_PROMPT);
+  const [audienceJoinPrompt, setAudienceJoinPrompt] = useState(
+    DEFAULT_AUDIENCE_JOIN_PROMPT,
+  );
+  const [audienceWaitingHeadline, setAudienceWaitingHeadline] = useState(
+    DEFAULT_AUDIENCE_WAITING_HEADLINE,
+  );
+  const [audienceWaitingPrompt, setAudienceWaitingPrompt] = useState(
+    DEFAULT_AUDIENCE_WAITING_PROMPT,
+  );
   const [questions, setQuestions] = useState<Question[]>(
     cloneQuestions(defaultQuestions),
   );
@@ -105,6 +117,16 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
       setTitle(data.room.title || DEFAULT_ROOM_TITLE);
       setLobbyHeadline(data.room.lobbyHeadline || DEFAULT_LOBBY_HEADLINE);
       setLobbyPrompt(data.room.lobbyPrompt || DEFAULT_LOBBY_PROMPT);
+      setAudienceJoinPrompt(
+        data.room.audienceJoinPrompt || DEFAULT_AUDIENCE_JOIN_PROMPT,
+      );
+      setAudienceWaitingHeadline(
+        data.room.audienceWaitingHeadline ||
+          DEFAULT_AUDIENCE_WAITING_HEADLINE,
+      );
+      setAudienceWaitingPrompt(
+        data.room.audienceWaitingPrompt || DEFAULT_AUDIENCE_WAITING_PROMPT,
+      );
       setQuestions(cloneQuestions(data.questions));
       setToolsQuestionId((current) =>
         data.questions.some((item) => item.id === current)
@@ -203,6 +225,9 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
         title,
         lobbyHeadline,
         lobbyPrompt,
+        audienceJoinPrompt,
+        audienceWaitingHeadline,
+        audienceWaitingPrompt,
         questions,
       });
       rememberKey(code, hostKey);
@@ -230,6 +255,9 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
         title: title || DEFAULT_ROOM_TITLE,
         lobbyHeadline,
         lobbyPrompt,
+        audienceJoinPrompt,
+        audienceWaitingHeadline,
+        audienceWaitingPrompt,
         questions,
       });
       const nextCode = result.room?.code;
@@ -460,6 +488,48 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
           </label>
           <p className="studio-hint">
             Eso se muestra en Presentar antes de comenzar la sala.
+          </p>
+
+          <label>
+            Texto al unirse (participantes)
+            <textarea
+              rows={2}
+              value={audienceJoinPrompt}
+              onChange={(event) => {
+                markDirty();
+                setAudienceJoinPrompt(event.target.value);
+              }}
+              placeholder={DEFAULT_AUDIENCE_JOIN_PROMPT}
+            />
+          </label>
+
+          <label>
+            Título en espera (participantes)
+            <input
+              value={audienceWaitingHeadline}
+              onChange={(event) => {
+                markDirty();
+                setAudienceWaitingHeadline(event.target.value);
+              }}
+              placeholder={DEFAULT_AUDIENCE_WAITING_HEADLINE}
+            />
+          </label>
+
+          <label>
+            Mensaje en espera (participantes)
+            <textarea
+              rows={2}
+              value={audienceWaitingPrompt}
+              onChange={(event) => {
+                markDirty();
+                setAudienceWaitingPrompt(event.target.value);
+              }}
+              placeholder={DEFAULT_AUDIENCE_WAITING_PROMPT}
+            />
+          </label>
+          <p className="studio-hint">
+            Lo ven en el teléfono al entrar y mientras esperan que inicies.
+            Vacío = default.
           </p>
 
           <label>

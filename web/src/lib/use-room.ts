@@ -127,6 +127,9 @@ export async function saveDeck(input: {
   title: string;
   lobbyHeadline?: string;
   lobbyPrompt?: string;
+  audienceJoinPrompt?: string;
+  audienceWaitingHeadline?: string;
+  audienceWaitingPrompt?: string;
   questions: Question[];
 }) {
   const response = await fetch("/api/room", {
@@ -149,6 +152,9 @@ export async function createRoom(input: {
   title: string;
   lobbyHeadline?: string;
   lobbyPrompt?: string;
+  audienceJoinPrompt?: string;
+  audienceWaitingHeadline?: string;
+  audienceWaitingPrompt?: string;
   questions?: Question[];
 }) {
   const response = await fetch("/api/room", {

@@ -434,7 +434,7 @@ button {
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.06);
 }
 
-.join-card > svg {
+.qr-frame > svg {
   border-radius: 8px;
   transform-origin: center;
   animation: qr-breathe 3.2s ease-in-out infinite;
@@ -454,12 +454,43 @@ button {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .join-card > svg {
+  .qr-frame > svg {
     animation: none;
   }
 }
 
-.join-card div {
+.qr-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+  padding: 0.45rem 0.85rem;
+  color: var(--ink);
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    transform 160ms ease;
+}
+
+.qr-download:hover:not(:disabled) {
+  border-color: var(--muted);
+  background: var(--card);
+  transform: translateY(-1px);
+}
+
+.qr-download:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.join-card > div:not(.qr-frame) {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -756,6 +787,10 @@ button {
   );
 }
 
+.results-column.type-open {
+  transform: translateY(clamp(1.5rem, 4vh, 3rem));
+}
+
 .open-track {
   display: flex;
   width: max-content;
@@ -767,6 +802,12 @@ button {
   will-change: transform;
 }
 
+.open-sequence {
+  display: flex;
+  gap: 0.85rem;
+  align-items: stretch;
+}
+
 .open-grid.is-paused .open-track {
   animation-play-state: paused;
 }
@@ -776,7 +817,7 @@ button {
     transform: translateX(0);
   }
   to {
-    transform: translateX(-50%);
+    transform: translateX(calc(-50% - 0.425rem));
   }
 }
 

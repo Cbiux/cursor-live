@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { Question, ResponseValue } from "@/lib/slides";
 import {
+  DEFAULT_AUDIENCE_JOIN_PROMPT,
+  DEFAULT_AUDIENCE_WAITING_HEADLINE,
+  DEFAULT_AUDIENCE_WAITING_PROMPT,
   DEFAULT_LOBBY_HEADLINE,
   DEFAULT_LOBBY_PROMPT,
   DEFAULT_ROOM_TITLE,
@@ -82,6 +85,9 @@ export async function POST(request: NextRequest) {
     title?: string;
     lobbyHeadline?: string;
     lobbyPrompt?: string;
+    audienceJoinPrompt?: string;
+    audienceWaitingHeadline?: string;
+    audienceWaitingPrompt?: string;
     questions?: Question[];
     markdown?: string;
     action?:
@@ -126,6 +132,14 @@ export async function POST(request: NextRequest) {
         lobbyHeadline:
           body.lobbyHeadline?.trim() || DEFAULT_LOBBY_HEADLINE,
         lobbyPrompt: body.lobbyPrompt?.trim() || DEFAULT_LOBBY_PROMPT,
+        audienceJoinPrompt:
+          body.audienceJoinPrompt?.trim() || DEFAULT_AUDIENCE_JOIN_PROMPT,
+        audienceWaitingHeadline:
+          body.audienceWaitingHeadline?.trim() ||
+          DEFAULT_AUDIENCE_WAITING_HEADLINE,
+        audienceWaitingPrompt:
+          body.audienceWaitingPrompt?.trim() ||
+          DEFAULT_AUDIENCE_WAITING_PROMPT,
         presenting: false,
         carouselIndex: 0,
         hostKeyHash: hashHostKey(body.hostKey!),
@@ -174,6 +188,14 @@ export async function POST(request: NextRequest) {
         lobbyHeadline:
           body.lobbyHeadline?.trim() || DEFAULT_LOBBY_HEADLINE,
         lobbyPrompt: body.lobbyPrompt?.trim() || DEFAULT_LOBBY_PROMPT,
+        audienceJoinPrompt:
+          body.audienceJoinPrompt?.trim() || DEFAULT_AUDIENCE_JOIN_PROMPT,
+        audienceWaitingHeadline:
+          body.audienceWaitingHeadline?.trim() ||
+          DEFAULT_AUDIENCE_WAITING_HEADLINE,
+        audienceWaitingPrompt:
+          body.audienceWaitingPrompt?.trim() ||
+          DEFAULT_AUDIENCE_WAITING_PROMPT,
       },
       code,
     );

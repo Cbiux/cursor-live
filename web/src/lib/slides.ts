@@ -140,6 +140,11 @@ export const DEFAULT_ROOM_TITLE = "Cursor Meetup";
 export const DEFAULT_LOBBY_HEADLINE = "Conozcámonos";
 export const DEFAULT_LOBBY_PROMPT =
   "Escribe tu nombre y entra. Todos responden de una sola vez; aquí verás el carrusel de resultados.";
+export const DEFAULT_AUDIENCE_JOIN_PROMPT =
+  "Tu nombre aparecerá en la pantalla mientras respondes. Si lo dejas vacío, sales como Anónimo.";
+export const DEFAULT_AUDIENCE_WAITING_HEADLINE = "Estás dentro.";
+export const DEFAULT_AUDIENCE_WAITING_PROMPT =
+  "Cuando el host pulse comenzar, responderás todas las preguntas de una sola vez.";
 
 export type RoomState = {
   code: string;
@@ -148,6 +153,12 @@ export type RoomState = {
   lobbyHeadline?: string;
   /** Supporting copy under the lobby headline. */
   lobbyPrompt?: string;
+  /** Helper text on the audience join/name screen. */
+  audienceJoinPrompt?: string;
+  /** Headline after a participant joins and waits for start. */
+  audienceWaitingHeadline?: string;
+  /** Body copy while waiting for the host to start. */
+  audienceWaitingPrompt?: string;
   presenting: boolean;
   carouselIndex: number;
   updatedAt: number;

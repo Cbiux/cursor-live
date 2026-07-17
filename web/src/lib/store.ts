@@ -11,6 +11,9 @@ import {
   parseResponsesMarkdown,
 } from "./responses-md";
 import {
+  DEFAULT_AUDIENCE_JOIN_PROMPT,
+  DEFAULT_AUDIENCE_WAITING_HEADLINE,
+  DEFAULT_AUDIENCE_WAITING_PROMPT,
   DEFAULT_LOBBY_HEADLINE,
   DEFAULT_LOBBY_PROMPT,
   DEFAULT_ROOM_TITLE,
@@ -48,6 +51,9 @@ function initialRoom(code: string): RoomState {
     title: DEFAULT_ROOM_TITLE,
     lobbyHeadline: DEFAULT_LOBBY_HEADLINE,
     lobbyPrompt: DEFAULT_LOBBY_PROMPT,
+    audienceJoinPrompt: DEFAULT_AUDIENCE_JOIN_PROMPT,
+    audienceWaitingHeadline: DEFAULT_AUDIENCE_WAITING_HEADLINE,
+    audienceWaitingPrompt: DEFAULT_AUDIENCE_WAITING_PROMPT,
     presenting: false,
     carouselIndex: 0,
     updatedAt: Date.now(),
@@ -371,12 +377,18 @@ export async function clearSession(code = ROOM_CODE) {
   const title = current.title;
   const lobbyHeadline = current.lobbyHeadline;
   const lobbyPrompt = current.lobbyPrompt;
+  const audienceJoinPrompt = current.audienceJoinPrompt;
+  const audienceWaitingHeadline = current.audienceWaitingHeadline;
+  const audienceWaitingPrompt = current.audienceWaitingPrompt;
   const hostKeyHash = current.hostKeyHash;
   const clearedRoom = {
     ...initialRoom(code),
     title,
     lobbyHeadline,
     lobbyPrompt,
+    audienceJoinPrompt,
+    audienceWaitingHeadline,
+    audienceWaitingPrompt,
     hostKeyHash,
   };
 

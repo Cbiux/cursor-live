@@ -9,6 +9,11 @@ import {
   Sparkles,
 } from "lucide-react";
 import type { Question, ResponseValue } from "@/lib/slides";
+import {
+  DEFAULT_AUDIENCE_JOIN_PROMPT,
+  DEFAULT_AUDIENCE_WAITING_HEADLINE,
+  DEFAULT_AUDIENCE_WAITING_PROMPT,
+} from "@/lib/slides";
 import { joinRoom, sendResponse, useRoom } from "@/lib/use-room";
 
 function getParticipantId() {
@@ -125,8 +130,8 @@ export function AudienceExperience({ code }: { code: string }) {
         <p className="eyebrow">SALA {code}</p>
         <h1>Escribe tu nombre para entrar</h1>
         <p className="mobile-prompt">
-          Tu nombre aparecerá en la pantalla mientras respondes. Si lo dejas
-          vacío, sales como Anónimo.
+          {data.room.audienceJoinPrompt?.trim() ||
+            DEFAULT_AUDIENCE_JOIN_PROMPT}
         </p>
         <input
           className="text-input name-input"
@@ -167,10 +172,13 @@ export function AudienceExperience({ code }: { code: string }) {
           LISTO
         </div>
         <p className="eyebrow">HOLA, {displayName.toUpperCase()}</p>
-        <h1>Estás dentro.</h1>
+        <h1>
+          {data.room.audienceWaitingHeadline?.trim() ||
+            DEFAULT_AUDIENCE_WAITING_HEADLINE}
+        </h1>
         <p className="muted">
-          Cuando el host pulse comenzar, responderás las {questions.length}{" "}
-          preguntas de una sola vez.
+          {data.room.audienceWaitingPrompt?.trim() ||
+            DEFAULT_AUDIENCE_WAITING_PROMPT}
         </p>
         <div className="lobby-count">
           <strong>{data.participants.length}</strong>

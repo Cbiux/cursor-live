@@ -2,10 +2,11 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronLeft,
   ChevronRight,
+  Download,
   Expand,
   LoaderCircle,
   Pause,
@@ -186,9 +187,34 @@ function OpenResults({ responses }: { responses: ResponseRecord[] }) {
   const items = useMemo(() => [...responses].reverse(), [responses]);
   if (!items.length) return <WaitingResults />;
 
-  // Duplicate the track so the leftward loop feels continuous.
-  const loop = items.length < 4 ? [...items, ...items, ...items] : [...items, ...items];
-  const durationSeconds = Math.max(18, loop.length * 2.4);
+  // Keep each half identical so the leftward loop has no visible jump.
+  const repeatCount = Math.max(1, Math.ceil(4 / items.length));
+  const sequence = Array.from(
+    { length: repeatCount },
+    () => items,
+  ).flat();
+  const durationSeconds = Math.max(16, sequence.length * 3.2);
+
+  const renderSequence = (copy: number) =>
+    sequence.map((item, index) => {
+      const key = `${item.participantId}-${item.createdAt}`;
+      const selected = selectedCard === key;
+      return (
+        <button
+          type="button"
+          className={`open-card ${selected ? "featured selected" : ""}`}
+          key={`${key}-${copy}-${index}`}
+          aria-pressed={selected}
+          tabIndex={copy === 0 ? 0 : -1}
+          onClick={() =>
+            setSelectedCard((current) => (current === key ? null : key))
+          }
+        >
+          <span className="open-name">{item.name}</span>
+          <span className="open-value">{String(item.value)}</span>
+        </button>
+      );
+    });
 
   return (
     <div
@@ -204,24 +230,10 @@ function OpenResults({ responses }: { responses: ResponseRecord[] }) {
         className="open-track"
         style={{ animationDuration: `${durationSeconds}s` }}
       >
-        {loop.map((item, index) => {
-          const key = `${item.participantId}-${item.createdAt}`;
-          const selected = selectedCard === key;
-          return (
-            <button
-              type="button"
-              className={`open-card ${selected ? "featured selected" : ""}`}
-              key={`${key}-${index}`}
-              aria-pressed={selected}
-              onClick={() =>
-                setSelectedCard((current) => (current === key ? null : key))
-              }
-            >
-              <span className="open-name">{item.name}</span>
-              <span className="open-value">{String(item.value)}</span>
-            </button>
-          );
-        })}
+        <div className="open-sequence">{renderSequence(0)}</div>
+        <div className="open-sequence" aria-hidden="true">
+          {renderSequence(1)}
+        </div>
       </div>
     </div>
   );
@@ -260,6 +272,67 @@ function responseLabel(count: number) {
   return count === 1 ? "1 respuesta" : `${count} respuestas`;
 }
 
+async function downloadQrPng(svg: SVGSVGElement, filename: string) {
+  const clone = svg.cloneNode(true) as SVGSVGElement;
+  clone.setAttribute("width", "1024");
+  clone.setAttribute("height", "1024");
+
+  const images = Array.from(clone.querySelectorAll("image"));
+  await Promise.all(
+    images.map(async (image) => {
+      const href =
+        image.getAttribute("href") ||
+        image.getAttributeNS("http://www.w3.org/1999/xlink", "href");
+      if (!href || href.startsWith("data:")) return;
+      const absolute = href.startsWith("http")
+        ? href
+        : new URL(href, window.location.origin).toString();
+      const response = await fetch(absolute);
+      if (!response.ok) return;
+      const blob = await response.blob();
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(new Error("No se pudo leer el logo."));
+        reader.readAsDataURL(blob);
+      });
+      image.setAttribute("href", dataUrl);
+      image.setAttributeNS("http://www.w3.org/1999/xlink", "href", dataUrl);
+    }),
+  );
+
+  const svgBlob = new Blob(
+    [new XMLSerializer().serializeToString(clone)],
+    { type: "image/svg+xml;charset=utf-8" },
+  );
+  const url = URL.createObjectURL(svgBlob);
+
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new window.Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error("No se pudo renderizar el QR."));
+      img.src = url;
+    });
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 1024;
+    canvas.height = 1024;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Canvas no disponible.");
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+    const link = document.createElement("a");
+    link.href = canvas.toDataURL("image/png");
+    link.download = filename;
+    link.click();
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 export function PresenterExperience({ code }: { code: string }) {
   const { data, error, refresh } = useRoom(code, 900);
   const [hostKey, setHostKey] = useState("");
@@ -269,6 +342,8 @@ export function PresenterExperience({ code }: { code: string }) {
   const [autoPlay, setAutoPlay] = useState(true);
   const [localPresenting, setLocalPresenting] = useState(false);
   const [localCarouselIndex, setLocalCarouselIndex] = useState(0);
+  const [downloadingQr, setDownloadingQr] = useState(false);
+  const qrRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -430,23 +505,43 @@ export function PresenterExperience({ code }: { code: string }) {
               {data.room.lobbyPrompt?.trim() || DEFAULT_LOBBY_PROMPT}
             </p>
             <div className="join-card">
-              <QRCodeSVG
-                value={joinUrl}
-                size={160}
-                bgColor="#ffffff"
-                fgColor="#000000"
-                level="M"
-                imageSettings={{
-                  src: "/CUBE_2D_LIGHT.svg",
-                  width: 30,
-                  height: 34,
-                  excavate: true,
-                }}
-              />
+              <div className="qr-frame" ref={qrRef}>
+                <QRCodeSVG
+                  value={joinUrl}
+                  size={160}
+                  bgColor="#ffffff"
+                  fgColor="#000000"
+                  level="M"
+                  imageSettings={{
+                    src: "/CUBE_2D_LIGHT.svg",
+                    width: 30,
+                    height: 34,
+                    excavate: true,
+                  }}
+                />
+              </div>
               <div>
                 <span>ÚNETE EN TU TELÉFONO</span>
                 <strong>{code}</strong>
                 <small>{joinUrl.replace(/^https?:\/\//, "")}</small>
+                <button
+                  type="button"
+                  className="qr-download"
+                  disabled={downloadingQr}
+                  onClick={() => {
+                    const svg = qrRef.current?.querySelector("svg");
+                    if (!svg) return;
+                    setDownloadingQr(true);
+                    void downloadQrPng(svg, `${code}-qr.png`)
+                      .catch(() => {
+                        setNotice("No se pudo descargar el QR.");
+                      })
+                      .finally(() => setDownloadingQr(false));
+                  }}
+                >
+                  <Download size={15} />
+                  {downloadingQr ? "Descargando…" : "Descargar QR"}
+                </button>
               </div>
             </div>
           </div>
