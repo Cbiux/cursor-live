@@ -18,6 +18,8 @@ import {
   saveParticipant,
   saveQuestions,
   saveResponse,
+  seedDemoResponses,
+  importMarkdownResponses,
   setRoom,
 } from "@/lib/store";
 
@@ -56,7 +58,13 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const body = (await request.json()) as {
-    kind?: "join" | "respond" | "host" | "save-deck" | "create-room";
+    kind?:
+      | "join"
+      | "respond"
+      | "host"
+      | "save-deck"
+      | "create-room"
+      | "import-md";
     code?: string;
     participantId?: string;
     name?: string;
@@ -65,14 +73,17 @@ export async function POST(request: NextRequest) {
     hostKey?: string;
     title?: string;
     questions?: Question[];
+    markdown?: string;
     action?:
       | "start"
       | "stop"
       | "next"
       | "previous"
       | "set"
-      | "reset";
+      | "reset"
+      | "seed";
     targetIndex?: number;
+    seedCount?: number;
   };
 
   if (body.kind === "create-room") {
@@ -157,6 +168,37 @@ export async function POST(request: NextRequest) {
     });
   }
 
+  if (body.kind === "import-md") {
+    const keyError = validateHostKeyInput(body.hostKey);
+    if (keyError) {
+      return NextResponse.json({ error: keyError }, { status: 400 });
+    }
+    if (!body.markdown?.trim()) {
+      return NextResponse.json(
+        { error: "El archivo Markdown está vacío." },
+        { status: 400 },
+      );
+    }
+
+    const auth = await claimOrVerifyHostKey(code, body.hostKey!, {
+      allowClaim: true,
+    });
+    if (!auth.ok) return authErrorResponse(auth);
+
+    const result = await importMarkdownResponses({
+      code,
+      markdown: body.markdown,
+      slideId: body.slideId,
+    });
+
+    return NextResponse.json({
+      ok: true,
+      ...result,
+      room: toPublicRoom(await getRoom(code)),
+      questions: await getQuestions(code),
+    });
+  }
+
   if (body.kind === "join") {
     if (!body.participantId || !body.name?.trim()) {
       return NextResponse.json(
@@ -221,7 +263,7 @@ export async function POST(request: NextRequest) {
     }
 
     const auth = await claimOrVerifyHostKey(code, body.hostKey!, {
-      allowClaim: false,
+      allowClaim: body.action === "seed",
     });
     if (!auth.ok) return authErrorResponse(auth);
 
@@ -252,6 +294,18 @@ export async function POST(request: NextRequest) {
         ok: true,
         room: toPublicRoom(await getRoom(code)),
         questions: await getQuestions(code),
+      });
+    }
+    if (body.action === "seed") {
+      const seeded = await seedDemoResponses({
+        code,
+        count: body.seedCount ?? 20,
+      });
+      return NextResponse.json({
+        ok: true,
+        room: toPublicRoom(await getRoom(code)),
+        questions: await getQuestions(code),
+        seeded,
       });
     }
 

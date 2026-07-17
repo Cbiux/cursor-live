@@ -88,8 +88,9 @@ export async function sendResponse(input: {
 export async function hostAction(input: {
   code: string;
   hostKey: string;
-  action: "start" | "stop" | "next" | "previous" | "set" | "reset";
+  action: "start" | "stop" | "next" | "previous" | "set" | "reset" | "seed";
   targetIndex?: number;
+  seedCount?: number;
 }) {
   const response = await fetch("/api/room", {
     method: "POST",
@@ -98,6 +99,7 @@ export async function hostAction(input: {
   });
   const result = (await response.json()) as { error?: string };
   if (!response.ok) throw new Error(result.error ?? "No se pudo actualizar.");
+  return result;
 }
 
 export async function saveDeck(input: {
@@ -137,6 +139,27 @@ export async function createRoom(input: {
     questions?: Question[];
   };
   if (!response.ok) throw new Error(result.error ?? "No se pudo crear la sala.");
+  return result;
+}
+
+export async function importResponsesMd(input: {
+  code: string;
+  hostKey: string;
+  markdown: string;
+  slideId?: number;
+}) {
+  const response = await fetch("/api/room", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ kind: "import-md", ...input }),
+  });
+  const result = (await response.json()) as {
+    error?: string;
+    imported?: number;
+    skipped?: number;
+    total?: number;
+  };
+  if (!response.ok) throw new Error(result.error ?? "No se pudo importar.");
   return result;
 }
 

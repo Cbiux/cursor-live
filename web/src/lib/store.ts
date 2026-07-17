@@ -5,6 +5,11 @@ import {
   isAdminHostKey,
 } from "./host-auth";
 import {
+  coerceValueForQuestion,
+  matchQuestion,
+  parseResponsesMarkdown,
+} from "./responses-md";
+import {
   ROOM_CODE,
   cloneQuestions,
   defaultQuestions,
@@ -293,6 +298,131 @@ export async function clearSession(code = ROOM_CODE) {
     bundle.room = { ...initialRoom(code), title, hostKeyHash };
     bundle.questions = questions;
   }
+}
+
+const DEMO_NAMES = [
+  "Ana", "Bruno", "Camila", "Diego", "Elena", "Fabián", "Gina", "Hugo",
+  "Irene", "Jorge", "Karla", "Luis", "Maya", "Nico", "Olga", "Pablo",
+  "Quinn", "Rosa", "Sofía", "Tomás", "Uma", "Valeria", "Wendy", "Ximena",
+  "Yago", "Zoe", "Andrés", "Beatriz", "Carlos", "Daniela",
+];
+
+const DEMO_PROJECTS = [
+  "Zeek", "Cursor Tips CR", "AI Notes", "Meetup Bot", "Local LLM",
+  "Ticket POS", "Green Route", "Study Buddy", "Hack CR", "Prompt Lab",
+  "Dev Radar", "Ship Fast", "Cafe Finder", "Code Coach", "Live Poll",
+  "Focus Timer", "Repo Digest", "Slide Sync", "Voice Notes", "CR Jobs",
+];
+
+const DEMO_WORDS = [
+  "aprender", "network", "cursor", "comunidad", "ideas", "empleos",
+  "proyectos", "mentores", "IA", "inspiración", "amigos", "código",
+];
+
+function demoValueFor(question: Question, index: number): ResponseValue {
+  if (question.type === "word-cloud") {
+    return DEMO_WORDS[index % DEMO_WORDS.length];
+  }
+  if (question.type === "choice" || question.type === "ranking") {
+    const options = question.options ?? ["Opción 1", "Opción 2", "Opción 3"];
+    if (question.type === "ranking") {
+      const shuffled = [...options].sort(
+        (a, b) => ((index + a.length) % 7) - ((index + b.length) % 7),
+      );
+      return shuffled.slice(0, Math.min(3, shuffled.length));
+    }
+    return options[index % options.length];
+  }
+  if (question.type === "scale") {
+    return index % 11;
+  }
+  return DEMO_PROJECTS[index % DEMO_PROJECTS.length];
+}
+
+export async function seedDemoResponses(input: {
+  code?: string;
+  count: number;
+}) {
+  const code = input.code ?? ROOM_CODE;
+  const count = Math.max(1, Math.min(100, Math.floor(input.count)));
+  const questions = await getQuestions(code);
+  const now = Date.now();
+
+  for (let index = 0; index < count; index += 1) {
+    const name = `${DEMO_NAMES[index % DEMO_NAMES.length]} ${index + 1}`;
+    const participantId = `demo-${code}-${index}`;
+    await saveParticipant({ code, id: participantId, name });
+
+    for (const question of questions) {
+      await saveResponse({
+        code,
+        participantId,
+        name,
+        slideId: question.id,
+        value: demoValueFor(question, index),
+      });
+      void now;
+    }
+  }
+
+  await setRoom({ presenting: true }, code);
+  return { count, questions: questions.length };
+}
+
+export async function importMarkdownResponses(input: {
+  code?: string;
+  markdown: string;
+  slideId?: number;
+}) {
+  const code = input.code ?? ROOM_CODE;
+  const questions = await getQuestions(code);
+  if (!questions.length) {
+    return { imported: 0, skipped: 0, total: 0 };
+  }
+
+  const fallback =
+    questions.find((question) => question.id === input.slideId) ?? questions[0];
+  const parsed = parseResponsesMarkdown(input.markdown);
+  let imported = 0;
+  let skipped = 0;
+
+  for (const [index, item] of parsed.entries()) {
+    const question = matchQuestion(questions, item.questionHint, fallback);
+    if (!question) {
+      skipped += 1;
+      continue;
+    }
+    const value = coerceValueForQuestion(question, item.value);
+    if (value === null) {
+      skipped += 1;
+      continue;
+    }
+
+    const participantId = `md-${code}-${index}-${item.name}`
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, "")
+      .slice(0, 48);
+    const id = participantId || `md-${code}-${index}`;
+    await saveParticipant({
+      code,
+      id,
+      name: item.name,
+    });
+    await saveResponse({
+      code,
+      participantId: id,
+      name: item.name,
+      slideId: question.id,
+      value,
+    });
+    imported += 1;
+  }
+
+  if (imported > 0) {
+    await setRoom({ presenting: true }, code);
+  }
+
+  return { imported, skipped, total: parsed.length };
 }
 
 export async function roomHasHostKey(code = ROOM_CODE) {

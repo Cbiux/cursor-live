@@ -2,12 +2,13 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronLeft,
   ChevronRight,
+  ClipboardCopy,
   Expand,
-  KeyRound,
+  FileUp,
   LoaderCircle,
   Pause,
   Play,
@@ -17,8 +18,22 @@ import {
   Users,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
+import {
+  HostKeyInput,
+  readRoomHostKey,
+  writeRoomHostKey,
+} from "@/components/host-key-input";
 import type { Question, ResponseRecord } from "@/lib/slides";
-import { hostAction, responsesFor, useRoom } from "@/lib/use-room";
+import {
+  buildResponsesMdPrompt,
+  RESPONSES_MD_EXAMPLE,
+} from "@/lib/responses-md";
+import {
+  hostAction,
+  importResponsesMd,
+  responsesFor,
+  useRoom,
+} from "@/lib/use-room";
 
 type Count = { label: string; count: number; score?: number };
 
@@ -97,7 +112,7 @@ function WordCloud({ responses }: { responses: ResponseRecord[] }) {
   return (
     <div className="word-cloud">
       {sorted.length ? (
-        sorted.slice(0, 28).map(([word, count], index) => (
+        sorted.slice(0, 48).map(([word, count], index) => (
           <span
             key={word}
             className={index < 3 ? "featured" : ""}
@@ -156,17 +171,17 @@ function ScaleResults({ responses }: { responses: ResponseRecord[] }) {
 }
 
 function OpenResults({ responses }: { responses: ResponseRecord[] }) {
-  const items = [...responses].reverse().slice(0, 12);
+  const items = [...responses].reverse();
   if (!items.length) return <WaitingResults />;
   return (
-    <div className="open-grid">
+    <div className="open-grid" aria-label={`${items.length} respuestas abiertas`}>
       {items.map((item, index) => (
         <div
           className={index < 2 ? "open-card featured" : "open-card"}
-          key={`${item.participantId}-${item.createdAt}`}
+          key={`${item.participantId}-${item.createdAt}-${index}`}
         >
           <span className="open-name">{item.name}</span>
-          <span>{String(item.value)}</span>
+          <span className="open-value">{String(item.value)}</span>
         </div>
       ))}
     </div>
@@ -183,13 +198,13 @@ function WaitingResults() {
 }
 
 function FeedTicker({ responses }: { responses: ResponseRecord[] }) {
-  const latest = [...responses].reverse().slice(0, 6);
+  const latest = [...responses].reverse().slice(0, 24);
   if (!latest.length) return null;
   return (
     <div className="feed-ticker">
-      {latest.map((item) => (
+      {latest.map((item, index) => (
         <span
-          key={`${item.participantId}-${item.createdAt}`}
+          key={`${item.participantId}-${item.createdAt}-${index}`}
           className="feed-chip"
         >
           <b>{item.name}</b>
@@ -202,6 +217,10 @@ function FeedTicker({ responses }: { responses: ResponseRecord[] }) {
   );
 }
 
+function responseLabel(count: number) {
+  return count === 1 ? "1 respuesta" : `${count} respuestas`;
+}
+
 export function PresenterExperience({ code }: { code: string }) {
   const { data, error, refresh } = useRoom(code, 900);
   const [hostKey, setHostKey] = useState("");
@@ -209,14 +228,11 @@ export function PresenterExperience({ code }: { code: string }) {
   const [notice, setNotice] = useState("");
   const [joinUrl, setJoinUrl] = useState(`/join?code=${code}`);
   const [autoPlay, setAutoPlay] = useState(true);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      setHostKey(
-        window.localStorage.getItem(`cursor-live-host-key:${code}`) ??
-          window.localStorage.getItem("cursor-live-host-key") ??
-          "",
-      );
+      setHostKey(readRoomHostKey(code));
       setJoinUrl(`${window.location.origin}/join?code=${code}`);
     }, 0);
     return () => window.clearTimeout(timer);
@@ -242,13 +258,12 @@ export function PresenterExperience({ code }: { code: string }) {
 
   useEffect(() => {
     if (!data?.room.presenting || !autoPlay || questions.length < 2) return;
+    const savedKey = readRoomHostKey(code);
+    if (!savedKey) return;
     const timer = window.setInterval(() => {
       void hostAction({
         code,
-        hostKey:
-          window.localStorage.getItem(`cursor-live-host-key:${code}`) ??
-          window.localStorage.getItem("cursor-live-host-key") ??
-          "",
+        hostKey: readRoomHostKey(code),
         action: "next",
       }).then(() => refresh());
     }, 8000);
@@ -256,22 +271,89 @@ export function PresenterExperience({ code }: { code: string }) {
   }, [autoPlay, code, data?.room.presenting, questions.length, refresh]);
 
   const act = async (
-    action: "start" | "stop" | "next" | "previous" | "set" | "reset",
+    action: "start" | "stop" | "next" | "previous" | "set" | "reset" | "seed",
     targetIndex?: number,
+    seedCount?: number,
   ) => {
+    if (!hostKey.trim()) {
+      setNotice("Escribe la clave de esta sala para gestionarla.");
+      return;
+    }
     setBusy(true);
     setNotice("");
     try {
-      await hostAction({ code, hostKey, action, targetIndex });
-      window.localStorage.setItem(`cursor-live-host-key:${code}`, hostKey);
-      window.localStorage.setItem("cursor-live-host-key", hostKey);
+      await hostAction({ code, hostKey, action, targetIndex, seedCount });
+      writeRoomHostKey(code, hostKey);
       await refresh();
+      if (action === "seed") {
+        setNotice(`Prueba lista: ${seedCount ?? 20} respuestas demo.`);
+      }
     } catch (cause) {
       setNotice(
-        cause instanceof Error ? cause.message : "No se pudo actualizar.",
+        cause instanceof Error
+          ? `${cause.message} Si no es tu sala, créala en Hostear.`
+          : "No se pudo actualizar.",
       );
     } finally {
       setBusy(false);
+    }
+  };
+
+  const copyAiPrompt = async () => {
+    if (!question) return;
+    const prompt = buildResponsesMdPrompt({
+      count: 40,
+      question,
+      questions,
+    });
+    try {
+      await navigator.clipboard.writeText(prompt);
+      setNotice("Prompt copiado. Pégalo en una IA y guarda la salida como .md");
+    } catch {
+      setNotice("No se pudo copiar el prompt.");
+    }
+  };
+
+  const copyExampleMd = async () => {
+    try {
+      await navigator.clipboard.writeText(RESPONSES_MD_EXAMPLE);
+      setNotice("Ejemplo .md copiado al portapapeles.");
+    } catch {
+      setNotice("No se pudo copiar el ejemplo.");
+    }
+  };
+
+  const importMdFile = async (file: File) => {
+    if (!hostKey.trim()) {
+      setNotice("Escribe la clave de esta sala para importar.");
+      return;
+    }
+    setBusy(true);
+    setNotice("");
+    try {
+      const markdown = await file.text();
+      const result = await importResponsesMd({
+        code,
+        hostKey,
+        markdown,
+        slideId: question?.id,
+      });
+      writeRoomHostKey(code, hostKey);
+      await refresh();
+      setNotice(
+        `Importadas ${result.imported ?? 0}` +
+          (result.skipped
+            ? ` · ${result.skipped} omitidas`
+            : "") +
+          ".",
+      );
+    } catch (cause) {
+      setNotice(
+        cause instanceof Error ? cause.message : "No se pudo importar el .md",
+      );
+    } finally {
+      setBusy(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -350,13 +432,11 @@ export function PresenterExperience({ code }: { code: string }) {
 
         <footer className="presenter-controls">
           <div className="host-key">
-            <KeyRound size={15} />
-            <input
+            <HostKeyInput
               value={hostKey}
-              onChange={(event) => setHostKey(event.target.value)}
+              onChange={setHostKey}
               placeholder="Clave de esta sala"
-              type="password"
-              aria-label="Clave del host"
+              className="host-key-field"
             />
           </div>
           <button
@@ -407,7 +487,7 @@ export function PresenterExperience({ code }: { code: string }) {
           <span>
             <Users size={15} /> {data.participants.length} personas
           </span>
-          <span>{totalAnswers} respuestas</span>
+          <span>{responseLabel(totalAnswers)}</span>
           <span>
             {carouselIndex + 1} / {questions.length}
           </span>
@@ -430,7 +510,7 @@ export function PresenterExperience({ code }: { code: string }) {
           <p className="eyebrow">PREGUNTA {carouselIndex + 1}</p>
           <h1>{question.title}</h1>
           {question.prompt && <p className="stage-prompt">{question.prompt}</p>}
-          <p className="response-count">{responses.length} respuestas</p>
+          <p className="response-count">{responseLabel(responses.length)}</p>
           <FeedTicker responses={responses} />
         </div>
 
@@ -447,15 +527,59 @@ export function PresenterExperience({ code }: { code: string }) {
 
       <footer className="presenter-controls">
         <div className="host-key">
-          <KeyRound size={15} />
-          <input
+          <HostKeyInput
             value={hostKey}
-            onChange={(event) => setHostKey(event.target.value)}
+            onChange={setHostKey}
             placeholder="Clave de esta sala"
-            type="password"
-            aria-label="Clave del host"
+            className="host-key-field"
           />
         </div>
+        <div className="demo-seed" title="Llenar con respuestas de prueba">
+          {[20, 50, 100].map((count) => (
+            <button
+              key={count}
+              type="button"
+              disabled={busy}
+              onClick={() => void act("seed", undefined, count)}
+            >
+              {count}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          disabled={busy || !question}
+          onClick={() => void copyAiPrompt()}
+          title="Copiar prompt para que una IA genere el .md"
+        >
+          <ClipboardCopy size={16} /> Prompt
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => void copyExampleMd()}
+          title="Copiar ejemplo de formato .md"
+        >
+          Formato
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => fileInputRef.current?.click()}
+          title="Importar respuestas desde .md"
+        >
+          <FileUp size={16} /> .md
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".md,text/markdown,text/plain"
+          hidden
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file) void importMdFile(file);
+          }}
+        />
         <button onClick={() => void act("previous")} disabled={busy}>
           <ChevronLeft size={20} />
         </button>

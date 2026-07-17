@@ -218,6 +218,24 @@ export function DocsPage() {
         </section>
 
         <section>
+          <h2>{es ? "Importar respuestas desde Markdown" : "Import responses from Markdown"}</h2>
+          <p>
+            {es
+              ? "En el presentador puedes copiar un prompt para que una IA genere un .md y luego importarlo."
+              : "In the presenter you can copy a prompt so an AI generates a .md file, then import it."}
+          </p>
+          <ol>
+            <li>{es ? "Pulsa Prompt y pégalo en una IA." : "Click Prompt and paste it into an AI."}</li>
+            <li>{es ? "Guarda la salida como archivo .md." : "Save the output as a .md file."}</li>
+            <li>{es ? "Pulsa .md e importa con la clave de la sala." : "Click .md and import with the room key."}</li>
+          </ol>
+          <p>
+            {es ? "Ejemplo en" : "Example at"}{" "}
+            <code>examples/responses-example.md</code>
+          </p>
+        </section>
+
+        <section>
           <h2>{es ? "Consejos para el evento" : "Event tips"}</h2>
           <ul>
             <li>

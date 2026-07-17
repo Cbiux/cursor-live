@@ -6,7 +6,6 @@ import {
   ArrowRight,
   BookOpen,
   Copy,
-  KeyRound,
   LoaderCircle,
   MonitorPlay,
   Plus,
@@ -14,6 +13,11 @@ import {
   Trash2,
 } from "lucide-react";
 import { AppHeader } from "@/components/app-header";
+import {
+  HostKeyInput,
+  readRoomHostKey,
+  writeRoomHostKey,
+} from "@/components/host-key-input";
 import {
   QUESTION_TYPE_LABELS,
   cloneQuestions,
@@ -28,10 +32,6 @@ import { usePreferences } from "@/lib/preferences";
 
 function newId() {
   return Date.now() + Math.floor(Math.random() * 1000);
-}
-
-function hostKeyStorageKey(code: string) {
-  return `cursor-live-host-key:${code || "new"}`;
 }
 
 export function HostStudio({ initialCode }: { initialCode: string }) {
@@ -49,11 +49,8 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      const saved =
-        window.localStorage.getItem(hostKeyStorageKey(code)) ??
-        window.localStorage.getItem("cursor-live-host-key") ??
-        "";
-      setHostKey(saved);
+      // Solo carga la clave guardada de ESTA sala (no una global de otra).
+      setHostKey(readRoomHostKey(code));
     }, 0);
     return () => window.clearTimeout(timer);
   }, [code]);
@@ -63,13 +60,17 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
     const timer = window.setTimeout(() => {
       setTitle(data.room.title || "Mi experiencia en vivo");
       setQuestions(cloneQuestions(data.questions));
+      if (data.room.hasHostKey && !readRoomHostKey(code)) {
+        setMessage(
+          "Esta sala ya tiene dueño. Escribe su clave para gestionarla, o deja el código vacío y pulsa Crear mi sala.",
+        );
+      }
     }, 0);
     return () => window.clearTimeout(timer);
   }, [code, data]);
 
   const rememberKey = (nextCode: string, key: string) => {
-    window.localStorage.setItem(hostKeyStorageKey(nextCode), key);
-    window.localStorage.setItem("cursor-live-host-key", key);
+    writeRoomHostKey(nextCode, key);
   };
 
   const updateQuestion = (id: number, patch: Partial<Question>) => {
@@ -126,30 +127,47 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
       setMessage("Crea una sala nueva o escribe el código de una existente.");
       return;
     }
+    if (!hostKey.trim()) {
+      setMessage("Escribe una clave para esta sala (mín. 4 caracteres).");
+      return;
+    }
     setSaving(true);
     setMessage("");
     try {
-      rememberKey(code, hostKey);
       await saveDeck({ code, hostKey, title, questions });
+      rememberKey(code, hostKey);
       await refresh();
-      setMessage(
-        hasHostKey
-          ? "Guardado. Usa la misma clave para presentar y gestionar."
-          : "Sala reclamada y guardada. Guarda tu clave: la necesitarás para gestionarla.",
-      );
+      setMessage("Guardado. Usa la misma clave para presentar y gestionar.");
     } catch (cause) {
-      setMessage(cause instanceof Error ? cause.message : "No se pudo guardar.");
+      const text =
+        cause instanceof Error ? cause.message : "No se pudo guardar.";
+      if (/incorrecta|dueño|clave/i.test(text)) {
+        setMessage(
+          `${text} Si no es tu sala, deja el código vacío y pulsa Crear mi sala.`,
+        );
+      } else {
+        setMessage(text);
+      }
     } finally {
       setSaving(false);
     }
   };
 
   const createNew = async () => {
+    if (!hostKey.trim()) {
+      setMessage("Elige una clave nueva (mín. 4 caracteres) antes de crear.");
+      return;
+    }
     setSaving(true);
     setMessage("");
     try {
+      // Crear siempre una sala propia: no reutilices un código ya protegido.
+      const requestedCode =
+        code && !(data?.room.hasHostKey)
+          ? code
+          : undefined;
       const result = await createRoom({
-        code: code || undefined,
+        code: requestedCode,
         hostKey,
         title: title || "Mi experiencia en vivo",
         questions,
@@ -163,7 +181,16 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
       );
       window.history.replaceState({}, "", `/host?code=${nextCode}`);
     } catch (cause) {
-      setMessage(cause instanceof Error ? cause.message : "No se pudo crear.");
+      const text =
+        cause instanceof Error ? cause.message : "No se pudo crear.";
+      if (/dueño|ya tiene/i.test(text)) {
+        setCode("");
+        setMessage(
+          `${text} Dejamos el código vacío: pulsa Crear mi sala de nuevo para generar uno tuyo.`,
+        );
+      } else {
+        setMessage(text);
+      }
     } finally {
       setSaving(false);
     }
@@ -245,21 +272,14 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
 
           <label>
             Clave del host
-            <div className="inline-field">
-              <KeyRound size={15} />
-              <input
-                value={hostKey}
-                onChange={(event) => setHostKey(event.target.value)}
-                placeholder="Mín. 4 caracteres"
-                type="password"
-                autoComplete="new-password"
-              />
-            </div>
+            <HostKeyInput value={hostKey} onChange={setHostKey} />
           </label>
           <p className="studio-hint">
-            {hasHostKey && code
-              ? "Esta sala está protegida. Necesitas la clave para guardar o presentar."
-              : "Al crear o guardar, defines la clave de esta sala. Cada host usa la suya."}
+            {hasHostKey && code && !readRoomHostKey(code)
+              ? "Esta sala ya tiene dueño. Escribe la clave correcta o crea una sala nueva."
+              : hasHostKey && code
+                ? "Sala protegida. Usa el ojo para ver tu clave guardada."
+                : "Elige tu clave al crear. Cada host tiene la suya; no uses una sala ajena."}
           </p>
 
           <div className="sidebar-buttons">
