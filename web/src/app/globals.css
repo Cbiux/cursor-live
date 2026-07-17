@@ -488,14 +488,20 @@ button {
 .word-cloud {
   display: flex;
   min-height: 430px;
-  max-height: min(68vh, 720px);
-  align-content: flex-start;
+  align-content: center;
   align-items: center;
   justify-content: center;
   flex-wrap: wrap;
-  gap: 0.7rem 1.2rem;
-  overflow: auto;
+  gap: 0.55rem 1rem;
   text-align: center;
+}
+
+.word-cloud.compact {
+  gap: 0.35rem 0.65rem;
+}
+
+.word-cloud.dense {
+  gap: 0.2rem 0.45rem;
 }
 
 .word-cloud span {
@@ -586,9 +592,6 @@ button {
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 0.65rem;
   align-content: start;
-  max-height: min(68vh, 720px);
-  overflow: auto;
-  padding-right: 0.25rem;
 }
 
 .open-card {
@@ -628,6 +631,52 @@ button {
 .open-card .open-value {
   color: inherit;
   word-break: break-word;
+}
+
+.open-grid.compact {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.open-grid.compact .open-card {
+  min-height: 62px;
+  padding: 0.55rem 0.6rem;
+  font-size: 0.72rem;
+}
+
+.open-grid.dense {
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 0.3rem;
+}
+
+.open-grid.dense .open-card {
+  min-height: 50px;
+  gap: 0.2rem;
+  padding: 0.4rem 0.45rem;
+  font-size: 0.62rem;
+  line-height: 1.2;
+}
+
+.open-grid.ultra {
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 0.24rem;
+}
+
+.open-grid.ultra .open-card {
+  min-height: 44px;
+  gap: 0.12rem;
+  padding: 0.3rem 0.35rem;
+  font-size: 0.54rem;
+  line-height: 1.15;
+}
+
+.open-grid.compact .open-name,
+.open-grid.dense .open-name,
+.open-grid.ultra .open-name {
+  overflow: hidden;
+  font-size: 0.5rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .feed-ticker {
@@ -1108,7 +1157,7 @@ button {
 
 .studio-grid {
   display: grid;
-  grid-template-columns: 300px 1fr;
+  grid-template-columns: 360px 1fr;
   gap: 1.2rem;
   margin-top: 1.4rem;
 }
@@ -1212,6 +1261,92 @@ button {
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
+}
+
+.host-tools {
+  display: grid;
+  gap: 0.75rem;
+  border-top: 1px solid var(--line);
+  padding-top: 0.9rem;
+}
+
+.host-tools-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+}
+
+.host-tools-title div {
+  display: grid;
+  gap: 0.16rem;
+}
+
+.host-tools-title strong {
+  color: var(--ink);
+  font-size: 0.82rem;
+}
+
+.host-tools-title span,
+.seed-tools > span {
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.host-tools select {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--panel);
+  color: var(--ink);
+  padding: 0.65rem 0.7rem;
+}
+
+.seed-tools {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.seed-tools > div {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4rem;
+}
+
+.seed-tools button,
+.host-tools-grid button,
+.host-tools-grid a {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--panel);
+  color: var(--ink);
+  padding: 0.55rem 0.6rem;
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 650;
+  text-align: center;
+}
+
+.host-tools-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.4rem;
+}
+
+.seed-tools button:hover,
+.host-tools-grid button:hover,
+.host-tools-grid a:hover {
+  border-color: var(--muted);
+}
+
+.seed-tools button:disabled,
+.host-tools-grid button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .studio-message {
@@ -1350,6 +1485,14 @@ button {
 
   .open-grid {
     grid-template-columns: 1fr;
+    max-height: 65vh;
+    overflow: auto;
+  }
+
+  .open-grid.compact,
+  .open-grid.dense,
+  .open-grid.ultra {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .studio-header {
@@ -1685,18 +1828,6 @@ body {
 
 .open-card.featured .open-name {
   color: rgba(255, 255, 255, 0.72);
-}
-
-.demo-seed {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-.demo-seed button {
-  min-width: 42px;
-  font-size: 0.72rem;
-  font-weight: 650;
 }
 
 .presenter-controls {

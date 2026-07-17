@@ -2,13 +2,11 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ChevronLeft,
   ChevronRight,
-  ClipboardCopy,
   Expand,
-  FileUp,
   LoaderCircle,
   Pause,
   Play,
@@ -24,16 +22,7 @@ import {
   writeRoomHostKey,
 } from "@/components/host-key-input";
 import type { Question, ResponseRecord } from "@/lib/slides";
-import {
-  buildResponsesMdPrompt,
-  RESPONSES_MD_EXAMPLE,
-} from "@/lib/responses-md";
-import {
-  hostAction,
-  importResponsesMd,
-  responsesFor,
-  useRoom,
-} from "@/lib/use-room";
+import { hostAction, responsesFor, useRoom } from "@/lib/use-room";
 
 type Count = { label: string; count: number; score?: number };
 
@@ -108,15 +97,18 @@ function WordCloud({ responses }: { responses: ResponseRecord[] }) {
   });
   const sorted = [...words.entries()].sort((a, b) => b[1] - a[1]);
   const max = Math.max(...sorted.map(([, count]) => count), 1);
+  const density = sorted.length > 50 ? "dense" : sorted.length > 28 ? "compact" : "";
+  const baseSize = sorted.length > 50 ? 0.72 : sorted.length > 28 ? 0.9 : 1.25;
+  const scale = sorted.length > 50 ? 1.25 : sorted.length > 28 ? 2 : 3.4;
 
   return (
-    <div className="word-cloud">
+    <div className={`word-cloud ${density}`}>
       {sorted.length ? (
-        sorted.slice(0, 48).map(([word, count], index) => (
+        sorted.map(([word, count], index) => (
           <span
             key={word}
             className={index < 3 ? "featured" : ""}
-            style={{ fontSize: `${1.25 + (count / max) * 3.4}rem` }}
+            style={{ fontSize: `${baseSize + (count / max) * scale}rem` }}
           >
             {word}
           </span>
@@ -173,8 +165,19 @@ function ScaleResults({ responses }: { responses: ResponseRecord[] }) {
 function OpenResults({ responses }: { responses: ResponseRecord[] }) {
   const items = [...responses].reverse();
   if (!items.length) return <WaitingResults />;
+  const density =
+    items.length > 80
+      ? "ultra"
+      : items.length > 50
+        ? "dense"
+        : items.length > 24
+          ? "compact"
+          : "";
   return (
-    <div className="open-grid" aria-label={`${items.length} respuestas abiertas`}>
+    <div
+      className={`open-grid ${density}`}
+      aria-label={`${items.length} respuestas abiertas`}
+    >
       {items.map((item, index) => (
         <div
           className={index < 2 ? "open-card featured" : "open-card"}
@@ -228,7 +231,6 @@ export function PresenterExperience({ code }: { code: string }) {
   const [notice, setNotice] = useState("");
   const [joinUrl, setJoinUrl] = useState(`/join?code=${code}`);
   const [autoPlay, setAutoPlay] = useState(true);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -271,9 +273,8 @@ export function PresenterExperience({ code }: { code: string }) {
   }, [autoPlay, code, data?.room.presenting, questions.length, refresh]);
 
   const act = async (
-    action: "start" | "stop" | "next" | "previous" | "set" | "reset" | "seed",
+    action: "start" | "stop" | "next" | "previous" | "set" | "reset",
     targetIndex?: number,
-    seedCount?: number,
   ) => {
     if (!hostKey.trim()) {
       setNotice("Escribe la clave de esta sala para gestionarla.");
@@ -282,12 +283,9 @@ export function PresenterExperience({ code }: { code: string }) {
     setBusy(true);
     setNotice("");
     try {
-      await hostAction({ code, hostKey, action, targetIndex, seedCount });
+      await hostAction({ code, hostKey, action, targetIndex });
       writeRoomHostKey(code, hostKey);
       await refresh();
-      if (action === "seed") {
-        setNotice(`Prueba lista: ${seedCount ?? 20} respuestas demo.`);
-      }
     } catch (cause) {
       setNotice(
         cause instanceof Error
@@ -296,64 +294,6 @@ export function PresenterExperience({ code }: { code: string }) {
       );
     } finally {
       setBusy(false);
-    }
-  };
-
-  const copyAiPrompt = async () => {
-    if (!question) return;
-    const prompt = buildResponsesMdPrompt({
-      count: 40,
-      question,
-      questions,
-    });
-    try {
-      await navigator.clipboard.writeText(prompt);
-      setNotice("Prompt copiado. Pégalo en una IA y guarda la salida como .md");
-    } catch {
-      setNotice("No se pudo copiar el prompt.");
-    }
-  };
-
-  const copyExampleMd = async () => {
-    try {
-      await navigator.clipboard.writeText(RESPONSES_MD_EXAMPLE);
-      setNotice("Ejemplo .md copiado al portapapeles.");
-    } catch {
-      setNotice("No se pudo copiar el ejemplo.");
-    }
-  };
-
-  const importMdFile = async (file: File) => {
-    if (!hostKey.trim()) {
-      setNotice("Escribe la clave de esta sala para importar.");
-      return;
-    }
-    setBusy(true);
-    setNotice("");
-    try {
-      const markdown = await file.text();
-      const result = await importResponsesMd({
-        code,
-        hostKey,
-        markdown,
-        slideId: question?.id,
-      });
-      writeRoomHostKey(code, hostKey);
-      await refresh();
-      setNotice(
-        `Importadas ${result.imported ?? 0}` +
-          (result.skipped
-            ? ` · ${result.skipped} omitidas`
-            : "") +
-          ".",
-      );
-    } catch (cause) {
-      setNotice(
-        cause instanceof Error ? cause.message : "No se pudo importar el .md",
-      );
-    } finally {
-      setBusy(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -511,7 +451,7 @@ export function PresenterExperience({ code }: { code: string }) {
           <h1>{question.title}</h1>
           {question.prompt && <p className="stage-prompt">{question.prompt}</p>}
           <p className="response-count">{responseLabel(responses.length)}</p>
-          <FeedTicker responses={responses} />
+          {question.type !== "open" && <FeedTicker responses={responses} />}
         </div>
 
         <div className={`results-column type-${question.type}`}>
@@ -534,52 +474,6 @@ export function PresenterExperience({ code }: { code: string }) {
             className="host-key-field"
           />
         </div>
-        <div className="demo-seed" title="Llenar con respuestas de prueba">
-          {[20, 50, 100].map((count) => (
-            <button
-              key={count}
-              type="button"
-              disabled={busy}
-              onClick={() => void act("seed", undefined, count)}
-            >
-              {count}
-            </button>
-          ))}
-        </div>
-        <button
-          type="button"
-          disabled={busy || !question}
-          onClick={() => void copyAiPrompt()}
-          title="Copiar prompt para que una IA genere el .md"
-        >
-          <ClipboardCopy size={16} /> Prompt
-        </button>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => void copyExampleMd()}
-          title="Copiar ejemplo de formato .md"
-        >
-          Formato
-        </button>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => fileInputRef.current?.click()}
-          title="Importar respuestas desde .md"
-        >
-          <FileUp size={16} /> .md
-        </button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".md,text/markdown,text/plain"
-          hidden
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            if (file) void importMdFile(file);
-          }}
-        />
         <button onClick={() => void act("previous")} disabled={busy}>
           <ChevronLeft size={20} />
         </button>

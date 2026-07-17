@@ -1,11 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
   BookOpen,
+  ClipboardCopy,
   Copy,
+  FileUp,
+  FlaskConical,
   LoaderCircle,
   MonitorPlay,
   Plus,
@@ -27,7 +30,17 @@ import {
   type Question,
   type QuestionType,
 } from "@/lib/slides";
-import { createRoom, saveDeck, useRoom } from "@/lib/use-room";
+import {
+  buildResponsesMdPrompt,
+  RESPONSES_MD_EXAMPLE,
+} from "@/lib/responses-md";
+import {
+  createRoom,
+  hostAction,
+  importResponsesMd,
+  saveDeck,
+  useRoom,
+} from "@/lib/use-room";
 import { usePreferences } from "@/lib/preferences";
 
 function newId() {
@@ -46,6 +59,10 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [copied, setCopied] = useState(false);
+  const [toolsQuestionId, setToolsQuestionId] = useState(
+    defaultQuestions[0]?.id ?? 0,
+  );
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -60,6 +77,11 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
     const timer = window.setTimeout(() => {
       setTitle(data.room.title || "Mi experiencia en vivo");
       setQuestions(cloneQuestions(data.questions));
+      setToolsQuestionId((current) =>
+        data.questions.some((item) => item.id === current)
+          ? current
+          : (data.questions[0]?.id ?? 0),
+      );
       if (data.room.hasHostKey && !readRoomHostKey(code)) {
         setMessage(
           "Esta sala ya tiene dueño. Escribe su clave para gestionarla, o deja el código vacío y pulsa Crear mi sala.",
@@ -204,6 +226,97 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
     window.setTimeout(() => setCopied(false), 1500);
   };
 
+  const toolsQuestion =
+    questions.find((item) => item.id === toolsQuestionId) ?? questions[0];
+
+  const requireToolsAccess = () => {
+    if (!code) {
+      setMessage("Primero crea o abre una sala.");
+      return false;
+    }
+    if (!hostKey.trim()) {
+      setMessage("Escribe la clave de la sala para usar las herramientas.");
+      return false;
+    }
+    return true;
+  };
+
+  const seedResponses = async (count: number) => {
+    if (!requireToolsAccess()) return;
+    setSaving(true);
+    setMessage("");
+    try {
+      await hostAction({
+        code,
+        hostKey,
+        action: "seed",
+        seedCount: count,
+      });
+      rememberKey(code, hostKey);
+      await refresh();
+      setMessage(`Prueba lista: ${count} respuestas demo por pregunta.`);
+    } catch (cause) {
+      setMessage(
+        cause instanceof Error ? cause.message : "No se pudo crear la prueba.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const copyAiPrompt = async () => {
+    if (!toolsQuestion) return;
+    const prompt = buildResponsesMdPrompt({
+      count: 50,
+      question: toolsQuestion,
+      questions,
+    });
+    try {
+      await navigator.clipboard.writeText(prompt);
+      setMessage("Prompt copiado. Pégalo en una IA y guarda la salida como .md.");
+    } catch {
+      setMessage("No se pudo copiar el prompt.");
+    }
+  };
+
+  const copyMdFormat = async () => {
+    try {
+      await navigator.clipboard.writeText(RESPONSES_MD_EXAMPLE);
+      setMessage("Formato .md copiado al portapapeles.");
+    } catch {
+      setMessage("No se pudo copiar el formato.");
+    }
+  };
+
+  const importMdFile = async (file: File) => {
+    if (!requireToolsAccess()) return;
+    setSaving(true);
+    setMessage("");
+    try {
+      const markdown = await file.text();
+      const result = await importResponsesMd({
+        code,
+        hostKey,
+        markdown,
+        slideId: toolsQuestion?.id,
+      });
+      rememberKey(code, hostKey);
+      await refresh();
+      setMessage(
+        `Importadas ${result.imported ?? 0} respuestas` +
+          (result.skipped ? ` · ${result.skipped} omitidas` : "") +
+          ".",
+      );
+    } catch (cause) {
+      setMessage(
+        cause instanceof Error ? cause.message : "No se pudo importar el .md.",
+      );
+    } finally {
+      setSaving(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   if (code && !data) {
     return (
       <main className="studio-shell center-screen">
@@ -325,6 +438,82 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
               Abrir presentación <ArrowRight size={16} />
             </Link>
           </div>
+
+          <section className="host-tools">
+            <div className="host-tools-title">
+              <FlaskConical size={16} />
+              <div>
+                <strong>Herramientas y respuestas</strong>
+                <span>Prueba o importa antes de presentar</span>
+              </div>
+            </div>
+
+            <label>
+              Aplicar a la pregunta
+              <select
+                value={toolsQuestion?.id ?? ""}
+                onChange={(event) =>
+                  setToolsQuestionId(Number(event.target.value))
+                }
+              >
+                {questions.map((item, index) => (
+                  <option key={item.id} value={item.id}>
+                    {index + 1}. {item.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <div className="seed-tools">
+              <span>Respuestas demo</span>
+              <div>
+                {[20, 50, 100].map((count) => (
+                  <button
+                    key={count}
+                    type="button"
+                    disabled={saving || !code}
+                    onClick={() => void seedResponses(count)}
+                  >
+                    {count}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="host-tools-grid">
+              <button
+                type="button"
+                disabled={!toolsQuestion}
+                onClick={() => void copyAiPrompt()}
+              >
+                <ClipboardCopy size={15} /> Copiar prompt IA
+              </button>
+              <button type="button" onClick={() => void copyMdFormat()}>
+                <Copy size={15} /> Copiar formato .md
+              </button>
+              <button
+                type="button"
+                disabled={saving || !code}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <FileUp size={15} /> Importar .md
+              </button>
+              <a href="/examples/responses-example.md" download>
+                <FileUp size={15} /> Descargar ejemplo
+              </a>
+            </div>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".md,text/markdown,text/plain"
+              hidden
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) void importMdFile(file);
+              }}
+            />
+          </section>
 
           {message && <p className="studio-message">{message}</p>}
 
