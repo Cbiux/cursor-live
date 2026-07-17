@@ -163,6 +163,29 @@ export async function importResponsesMd(input: {
   return result;
 }
 
+export async function importQuestionsMd(input: {
+  code: string;
+  hostKey: string;
+  markdown: string;
+  title?: string;
+}) {
+  const response = await fetch("/api/room", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ kind: "import-questions", ...input }),
+  });
+  const result = (await response.json()) as {
+    error?: string;
+    room?: PublicRoomState;
+    questions?: Question[];
+    importedQuestions?: number;
+  };
+  if (!response.ok) {
+    throw new Error(result.error ?? "No se pudo configurar la sala.");
+  }
+  return result;
+}
+
 export function responsesFor(
   bySlide: ResponsesBySlide | undefined,
   slideId: number,

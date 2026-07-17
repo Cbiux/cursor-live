@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
   BookOpen,
@@ -31,12 +31,17 @@ import {
   type QuestionType,
 } from "@/lib/slides";
 import {
+  buildQuestionsMdPrompt,
+  buildCursorRoomCode,
+} from "@/lib/questions-md";
+import {
   buildResponsesMdPrompt,
   RESPONSES_MD_EXAMPLE,
 } from "@/lib/responses-md";
 import {
   createRoom,
   hostAction,
+  importQuestionsMd,
   importResponsesMd,
   saveDeck,
   useRoom,
@@ -47,9 +52,17 @@ function newId() {
   return Date.now() + Math.floor(Math.random() * 1000);
 }
 
+function extractCursorNumber(code: string) {
+  const match = code.toUpperCase().match(/^CURSOR(\d+)$/);
+  return match?.[1] ?? "";
+}
+
 export function HostStudio({ initialCode }: { initialCode: string }) {
   const { t } = usePreferences();
-  const [code, setCode] = useState(initialCode);
+  const [roomNumber, setRoomNumber] = useState(
+    extractCursorNumber(initialCode) || "1",
+  );
+  const code = useMemo(() => buildCursorRoomCode(roomNumber), [roomNumber]);
   const { data, error, refresh } = useRoom(code, 2500);
   const [hostKey, setHostKey] = useState("");
   const [title, setTitle] = useState("Cursor Live");
@@ -62,11 +75,11 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
   const [toolsQuestionId, setToolsQuestionId] = useState(
     defaultQuestions[0]?.id ?? 0,
   );
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const questionsFileRef = useRef<HTMLInputElement>(null);
+  const responsesFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      // Solo carga la clave guardada de ESTA sala (no una global de otra).
       setHostKey(readRoomHostKey(code));
     }, 0);
     return () => window.clearTimeout(timer);
@@ -84,7 +97,7 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
       );
       if (data.room.hasHostKey && !readRoomHostKey(code)) {
         setMessage(
-          "Esta sala ya tiene dueño. Escribe su clave para gestionarla, o deja el código vacío y pulsa Crear mi sala.",
+          "Esta sala ya tiene dueño. Escribe su clave para gestionarla o cambia el número.",
         );
       }
     }, 0);
@@ -144,15 +157,20 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
     });
   };
 
-  const persist = async () => {
-    if (!code) {
-      setMessage("Crea una sala nueva o escribe el código de una existente.");
-      return;
+  const requireAccess = (needsCode = true) => {
+    if (needsCode && !code) {
+      setMessage("Escribe un número para formar el código CURSOR…");
+      return false;
     }
     if (!hostKey.trim()) {
-      setMessage("Escribe una clave para esta sala (mín. 4 caracteres).");
-      return;
+      setMessage("Escribe la clave (mín. 4 caracteres) para configurar la sala.");
+      return false;
     }
+    return true;
+  };
+
+  const persist = async () => {
+    if (!requireAccess()) return;
     setSaving(true);
     setMessage("");
     try {
@@ -163,33 +181,19 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
     } catch (cause) {
       const text =
         cause instanceof Error ? cause.message : "No se pudo guardar.";
-      if (/incorrecta|dueño|clave/i.test(text)) {
-        setMessage(
-          `${text} Si no es tu sala, deja el código vacío y pulsa Crear mi sala.`,
-        );
-      } else {
-        setMessage(text);
-      }
+      setMessage(text);
     } finally {
       setSaving(false);
     }
   };
 
   const createNew = async () => {
-    if (!hostKey.trim()) {
-      setMessage("Elige una clave nueva (mín. 4 caracteres) antes de crear.");
-      return;
-    }
+    if (!requireAccess()) return;
     setSaving(true);
     setMessage("");
     try {
-      // Crear siempre una sala propia: no reutilices un código ya protegido.
-      const requestedCode =
-        code && !(data?.room.hasHostKey)
-          ? code
-          : undefined;
       const result = await createRoom({
-        code: requestedCode,
+        code,
         hostKey,
         title: title || "Mi experiencia en vivo",
         questions,
@@ -197,22 +201,14 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
       const nextCode = result.room?.code;
       if (!nextCode) throw new Error("No se generó el código.");
       rememberKey(nextCode, hostKey);
-      setCode(nextCode);
+      const number = extractCursorNumber(nextCode);
+      if (number) setRoomNumber(number);
       setMessage(
         `Sala creada: ${nextCode}. Guarda tu clave — solo quien la tenga puede gestionarla.`,
       );
       window.history.replaceState({}, "", `/host?code=${nextCode}`);
     } catch (cause) {
-      const text =
-        cause instanceof Error ? cause.message : "No se pudo crear.";
-      if (/dueño|ya tiene/i.test(text)) {
-        setCode("");
-        setMessage(
-          `${text} Dejamos el código vacío: pulsa Crear mi sala de nuevo para generar uno tuyo.`,
-        );
-      } else {
-        setMessage(text);
-      }
+      setMessage(cause instanceof Error ? cause.message : "No se pudo crear.");
     } finally {
       setSaving(false);
     }
@@ -229,20 +225,55 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
   const toolsQuestion =
     questions.find((item) => item.id === toolsQuestionId) ?? questions[0];
 
-  const requireToolsAccess = () => {
-    if (!code) {
-      setMessage("Primero crea o abre una sala.");
-      return false;
+  const copyQuestionsPrompt = async () => {
+    try {
+      await navigator.clipboard.writeText(
+        buildQuestionsMdPrompt({ title }),
+      );
+      setMessage(
+        "Prompt + formato copiados. Pégalos en una IA, guarda el .md y súbelo aquí.",
+      );
+    } catch {
+      setMessage("No se pudo copiar el prompt.");
     }
-    if (!hostKey.trim()) {
-      setMessage("Escribe la clave de la sala para usar las herramientas.");
-      return false;
+  };
+
+  const configureFromQuestionsMd = async (file: File) => {
+    if (!requireAccess()) return;
+    setSaving(true);
+    setMessage("");
+    try {
+      const markdown = await file.text();
+      const result = await importQuestionsMd({
+        code,
+        hostKey,
+        markdown,
+        title,
+      });
+      rememberKey(code, hostKey);
+      if (result.room?.title) setTitle(result.room.title);
+      if (result.questions?.length) {
+        setQuestions(cloneQuestions(result.questions));
+      }
+      await refresh();
+      window.history.replaceState({}, "", `/host?code=${code}`);
+      setMessage(
+        `Sala ${code} configurada con ${result.importedQuestions ?? result.questions?.length ?? 0} preguntas desde el .md.`,
+      );
+    } catch (cause) {
+      setMessage(
+        cause instanceof Error
+          ? cause.message
+          : "No se pudo configurar la sala con el .md.",
+      );
+    } finally {
+      setSaving(false);
+      if (questionsFileRef.current) questionsFileRef.current.value = "";
     }
-    return true;
   };
 
   const seedResponses = async (count: number) => {
-    if (!requireToolsAccess()) return;
+    if (!requireAccess()) return;
     setSaving(true);
     setMessage("");
     try {
@@ -264,32 +295,24 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
     }
   };
 
-  const copyAiPrompt = async () => {
+  const copyResponsesPrompt = async () => {
     if (!toolsQuestion) return;
-    const prompt = buildResponsesMdPrompt({
-      count: 50,
-      question: toolsQuestion,
-      questions,
-    });
     try {
-      await navigator.clipboard.writeText(prompt);
-      setMessage("Prompt copiado. Pégalo en una IA y guarda la salida como .md.");
+      await navigator.clipboard.writeText(
+        `${buildResponsesMdPrompt({
+          count: 50,
+          question: toolsQuestion,
+          questions,
+        })}\n\n---\n\nEjemplo de formato:\n\n${RESPONSES_MD_EXAMPLE}`,
+      );
+      setMessage("Prompt + formato de respuestas copiados.");
     } catch {
-      setMessage("No se pudo copiar el prompt.");
+      setMessage("No se pudo copiar el prompt de respuestas.");
     }
   };
 
-  const copyMdFormat = async () => {
-    try {
-      await navigator.clipboard.writeText(RESPONSES_MD_EXAMPLE);
-      setMessage("Formato .md copiado al portapapeles.");
-    } catch {
-      setMessage("No se pudo copiar el formato.");
-    }
-  };
-
-  const importMdFile = async (file: File) => {
-    if (!requireToolsAccess()) return;
+  const importResponsesFile = async (file: File) => {
+    if (!requireAccess()) return;
     setSaving(true);
     setMessage("");
     try {
@@ -313,7 +336,7 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
       );
     } finally {
       setSaving(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      if (responsesFileRef.current) responsesFileRef.current.value = "";
     }
   };
 
@@ -368,20 +391,23 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
 
           <label>
             Código de sala
-            <input
-              value={code}
-              onChange={(event) =>
-                setCode(
-                  event.target.value
-                    .toUpperCase()
-                    .replace(/[^A-Z0-9]/g, "")
-                    .slice(0, 12),
-                )
-              }
-              placeholder="Vacío = se genera al crear"
-              maxLength={12}
-            />
+            <div className="code-prefix-field">
+              <span>CURSOR</span>
+              <input
+                value={roomNumber}
+                onChange={(event) =>
+                  setRoomNumber(event.target.value.replace(/\D/g, "").slice(0, 6))
+                }
+                placeholder="1"
+                inputMode="numeric"
+                maxLength={6}
+                aria-label="Número de sala"
+              />
+            </div>
           </label>
+          <p className="studio-hint">
+            Código completo: <strong>{code || "CURSOR…"}</strong>
+          </p>
 
           <label>
             Clave del host
@@ -389,16 +415,58 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
           </label>
           <p className="studio-hint">
             {hasHostKey && code && !readRoomHostKey(code)
-              ? "Esta sala ya tiene dueño. Escribe la clave correcta o crea una sala nueva."
-              : hasHostKey && code
-                ? "Sala protegida. Usa el ojo para ver tu clave guardada."
-                : "Elige tu clave al crear. Cada host tiene la suya; no uses una sala ajena."}
+              ? "Esta sala ya tiene dueño. Escribe su clave para gestionarla."
+              : "Con esta clave configuras y presentas esta sala."}
           </p>
+
+          <section className="host-tools">
+            <div className="host-tools-title">
+              <FileUp size={16} />
+              <div>
+                <strong>Configurar con Markdown</strong>
+                <span>Un prompt + un .md = sala lista</span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className="primary-button"
+              onClick={() => void copyQuestionsPrompt()}
+            >
+              <ClipboardCopy size={16} /> Copiar prompt + formato
+            </button>
+            <button
+              type="button"
+              className="secondary-button"
+              disabled={saving || !code}
+              onClick={() => questionsFileRef.current?.click()}
+            >
+              {saving ? (
+                <LoaderCircle className="spin" size={16} />
+              ) : (
+                <FileUp size={16} />
+              )}
+              Subir .md y configurar sala
+            </button>
+            <input
+              ref={questionsFileRef}
+              type="file"
+              accept=".md,text/markdown,text/plain"
+              hidden
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) void configureFromQuestionsMd(file);
+              }}
+            />
+            <p className="studio-hint">
+              1) Copia el prompt · 2) Pégalo en una IA · 3) Guarda el .md · 4) Súbelo aquí.
+            </p>
+          </section>
 
           <div className="sidebar-buttons">
             <button
               className="primary-button"
-              disabled={saving}
+              disabled={saving || !code}
               onClick={() => void createNew()}
             >
               {saving ? (
@@ -406,7 +474,7 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
               ) : (
                 <Plus size={16} />
               )}
-              Crear mi sala
+              Crear / reclamar sala
             </button>
             <button
               className="secondary-button"
@@ -443,13 +511,13 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
             <div className="host-tools-title">
               <FlaskConical size={16} />
               <div>
-                <strong>Herramientas y respuestas</strong>
-                <span>Prueba o importa antes de presentar</span>
+                <strong>Respuestas de prueba</strong>
+                <span>Opcional, para ensayar la proyección</span>
               </div>
             </div>
 
             <label>
-              Aplicar a la pregunta
+              Pregunta destino
               <select
                 value={toolsQuestion?.id ?? ""}
                 onChange={(event) =>
@@ -465,7 +533,7 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
             </label>
 
             <div className="seed-tools">
-              <span>Respuestas demo</span>
+              <span>Demo rápida</span>
               <div>
                 {[20, 50, 100].map((count) => (
                   <button
@@ -484,33 +552,26 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
               <button
                 type="button"
                 disabled={!toolsQuestion}
-                onClick={() => void copyAiPrompt()}
+                onClick={() => void copyResponsesPrompt()}
               >
-                <ClipboardCopy size={15} /> Copiar prompt IA
-              </button>
-              <button type="button" onClick={() => void copyMdFormat()}>
-                <Copy size={15} /> Copiar formato .md
+                <ClipboardCopy size={15} /> Prompt respuestas
               </button>
               <button
                 type="button"
                 disabled={saving || !code}
-                onClick={() => fileInputRef.current?.click()}
+                onClick={() => responsesFileRef.current?.click()}
               >
-                <FileUp size={15} /> Importar .md
+                <FileUp size={15} /> Subir respuestas
               </button>
-              <a href="/examples/responses-example.md" download>
-                <FileUp size={15} /> Descargar ejemplo
-              </a>
             </div>
-
             <input
-              ref={fileInputRef}
+              ref={responsesFileRef}
               type="file"
               accept=".md,text/markdown,text/plain"
               hidden
               onChange={(event) => {
                 const file = event.target.files?.[0];
-                if (file) void importMdFile(file);
+                if (file) void importResponsesFile(file);
               }}
             />
           </section>

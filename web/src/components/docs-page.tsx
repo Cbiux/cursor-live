@@ -69,36 +69,33 @@ export function DocsPage() {
           <ol>
             <li>
               {es
-                ? "Abre Hostear, define una clave (mín. 4 caracteres) y pulsa Crear mi sala."
-                : "Open Host, set a key (min. 4 characters), and click Create my room."}
+                ? "Abre Hostear. El código siempre es CURSOR + un número (ej. CURSOR1)."
+                : "Open Host. The code is always CURSOR + a number (e.g. CURSOR1)."}
             </li>
             <li>
               {es
-                ? "Guarda la clave: solo quien la tenga puede editar o presentar esa sala."
-                : "Save the key: only someone with it can edit or present that room."}
+                ? "Define tu clave (mín. 4 caracteres). Solo quien la tenga puede configurar o presentar esa sala."
+                : "Set your key (min. 4 characters). Only someone with it can configure or present that room."}
             </li>
             <li>
               {es
-                ? "Edita las preguntas: tipo, texto, ayuda y opciones."
-                : "Edit questions: type, text, helper copy, and options."}
-            </li>
-            <li>
-              {es ? "Pulsa Guardar cambios." : "Click Save changes."}
+                ? "Opción rápida: Copiar prompt + formato → pégalo en una IA → guarda el .md → Subir .md y configurar sala."
+                : "Quick path: Copy prompt + format → paste into an AI → save the .md → Upload .md and configure room."}
             </li>
             <li>
               {es
-                ? "Abre Presentar, escribe la misma clave y comparte el QR o el código."
-                : "Open Present, enter the same key, and share the QR or room code."}
+                ? "También puedes editar preguntas a mano y pulsar Guardar cambios / Crear sala."
+                : "You can also edit questions by hand and click Save changes / Create room."}
             </li>
             <li>
               {es
-                ? "Cuando la sala esté lista, pulsa Comenzar."
-                : "When the room is ready, press Start."}
+                ? "Abre Presentar con la misma clave y comparte el QR o el código."
+                : "Open Present with the same key and share the QR or room code."}
             </li>
             <li>
               {es
-                ? "Deja el carrusel en pantalla completa mientras llegan respuestas."
-                : "Leave the carousel fullscreen while answers arrive."}
+                ? "Cuando la sala esté lista, pulsa Comenzar y deja el carrusel en pantalla completa."
+                : "When ready, press Start and leave the carousel fullscreen."}
             </li>
           </ol>
         </section>
@@ -218,16 +215,33 @@ export function DocsPage() {
         </section>
 
         <section>
+          <h2>
+            {es
+              ? "Configurar preguntas desde Markdown"
+              : "Configure questions from Markdown"}
+          </h2>
+          <p>
+            {es
+              ? "En el panel Host: un botón copia el prompt + formato; otro sube el .md y configura la sala (título y preguntas)."
+              : "In the Host panel: one button copies the prompt + format; another uploads the .md and configures the room (title and questions)."}
+          </p>
+          <p>
+            {es ? "Ejemplo en" : "Example at"}{" "}
+            <code>examples/questions-example.md</code>
+          </p>
+        </section>
+
+        <section>
           <h2>{es ? "Importar respuestas desde Markdown" : "Import responses from Markdown"}</h2>
           <p>
             {es
-              ? "En el presentador puedes copiar un prompt para que una IA genere un .md y luego importarlo."
-              : "In the presenter you can copy a prompt so an AI generates a .md file, then import it."}
+              ? "También en Host puedes copiar un prompt de respuestas de prueba y subir un .md para ensayar la proyección."
+              : "Also in Host you can copy a test-responses prompt and upload a .md to rehearse the projection."}
           </p>
           <ol>
-            <li>{es ? "Pulsa Prompt y pégalo en una IA." : "Click Prompt and paste it into an AI."}</li>
+            <li>{es ? "Pulsa Prompt respuestas y pégalo en una IA." : "Click Responses prompt and paste it into an AI."}</li>
             <li>{es ? "Guarda la salida como archivo .md." : "Save the output as a .md file."}</li>
-            <li>{es ? "Pulsa .md e importa con la clave de la sala." : "Click .md and import with the room key."}</li>
+            <li>{es ? "Pulsa Subir respuestas con la clave de la sala." : "Click Upload responses with the room key."}</li>
           </ol>
           <p>
             {es ? "Ejemplo en" : "Example at"}{" "}

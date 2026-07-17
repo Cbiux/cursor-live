@@ -5,6 +5,7 @@ import {
   toPublicRoom,
   validateHostKeyInput,
 } from "@/lib/host-auth";
+import { parseQuestionsMarkdown } from "@/lib/questions-md";
 import {
   claimOrVerifyHostKey,
   clearSession,
@@ -64,7 +65,8 @@ export async function POST(request: NextRequest) {
       | "host"
       | "save-deck"
       | "create-room"
-      | "import-md";
+      | "import-md"
+      | "import-questions";
     code?: string;
     participantId?: string;
     name?: string;
@@ -196,6 +198,69 @@ export async function POST(request: NextRequest) {
       ...result,
       room: toPublicRoom(await getRoom(code)),
       questions: await getQuestions(code),
+    });
+  }
+
+  if (body.kind === "import-questions") {
+    const keyError = validateHostKeyInput(body.hostKey);
+    if (keyError) {
+      return NextResponse.json({ error: keyError }, { status: 400 });
+    }
+    if (!body.markdown?.trim()) {
+      return NextResponse.json(
+        { error: "El archivo Markdown está vacío." },
+        { status: 400 },
+      );
+    }
+
+    let parsed;
+    try {
+      parsed = parseQuestionsMarkdown(body.markdown);
+    } catch (cause) {
+      return NextResponse.json(
+        {
+          error:
+            cause instanceof Error
+              ? cause.message
+              : "No se pudo leer el Markdown de preguntas.",
+        },
+        { status: 400 },
+      );
+    }
+
+    const existing = await getRoom(code);
+    if (existing.hostKeyHash) {
+      const auth = await claimOrVerifyHostKey(code, body.hostKey!, {
+        allowClaim: false,
+      });
+      if (!auth.ok) return authErrorResponse(auth);
+    } else {
+      await setRoom(
+        {
+          title: parsed.title,
+          presenting: false,
+          carouselIndex: 0,
+          hostKeyHash: hashHostKey(body.hostKey!),
+        },
+        code,
+      );
+    }
+
+    if (body.title?.trim() || parsed.title) {
+      await setRoom(
+        { title: body.title?.trim() || parsed.title },
+        code,
+      );
+    }
+
+    const questions = await saveQuestions(parsed.questions, code);
+    const room = await getRoom(code);
+
+    return NextResponse.json({
+      ok: true,
+      room: toPublicRoom(room),
+      questions,
+      importedQuestions: questions.length,
     });
   }
 

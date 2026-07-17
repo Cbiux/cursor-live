@@ -1375,6 +1375,34 @@ button {
   line-height: 1.45;
 }
 
+.code-prefix-field {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  padding: 0 0.35rem 0 0.75rem;
+  overflow: hidden;
+}
+
+.code-prefix-field span {
+  color: var(--ink);
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.code-prefix-field input {
+  border: 0 !important;
+  background: transparent !important;
+  padding-left: 0 !important;
+}
+
+.studio-hint strong {
+  color: var(--ink);
+}
+
 .studio-meta {
   display: flex;
   flex-wrap: wrap;
