@@ -328,7 +328,9 @@ export async function POST(request: NextRequest) {
     }
 
     const auth = await claimOrVerifyHostKey(code, body.hostKey!, {
-      allowClaim: body.action === "seed",
+      // Claim on first host action so Presentar can lock a room that
+      // was opened before a key existed (or after a cold memory store).
+      allowClaim: true,
     });
     if (!auth.ok) return authErrorResponse(auth);
 

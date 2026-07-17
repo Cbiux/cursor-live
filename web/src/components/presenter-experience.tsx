@@ -267,7 +267,11 @@ export function PresenterExperience({ code }: { code: string }) {
         code,
         hostKey: readRoomHostKey(code),
         action: "next",
-      }).then(() => refresh());
+      })
+        .then(() => refresh())
+        .catch(() => {
+          /* Ignore transient host/auth errors during autoplay. */
+        });
     }, 8000);
     return () => window.clearInterval(timer);
   }, [autoPlay, code, data?.room.presenting, questions.length, refresh]);
@@ -288,9 +292,7 @@ export function PresenterExperience({ code }: { code: string }) {
       await refresh();
     } catch (cause) {
       setNotice(
-        cause instanceof Error
-          ? `${cause.message} Si no es tu sala, créala en Hostear.`
-          : "No se pudo actualizar.",
+        cause instanceof Error ? cause.message : "No se pudo actualizar.",
       );
     } finally {
       setBusy(false);
@@ -340,6 +342,13 @@ export function PresenterExperience({ code }: { code: string }) {
               {questions.length} preguntas listas. Todos responden de una sola
               vez; aquí verás el carrusel de resultados.
             </p>
+            {!data.persistent && (
+              <p className="control-notice lobby-persist-warning">
+                Esta sesión aún no tiene almacenamiento compartido: al
+                reiniciar o cambiar de servidor puede perderse la sala. Usa la
+                misma clave y vuelve a guardar desde Hostear si te saca.
+              </p>
+            )}
             <div className="join-card">
               <QRCodeSVG
                 value={joinUrl}
