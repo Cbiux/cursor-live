@@ -436,6 +436,12 @@ export function PresenterExperience({ code }: { code: string }) {
                 bgColor="#ffffff"
                 fgColor="#000000"
                 level="M"
+                imageSettings={{
+                  src: "/CUBE_2D_LIGHT.svg",
+                  width: 30,
+                  height: 34,
+                  excavate: true,
+                }}
               />
               <div>
                 <span>ÚNETE EN TU TELÉFONO</span>

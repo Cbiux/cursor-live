@@ -434,8 +434,29 @@ button {
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.06);
 }
 
-.join-card svg {
+.join-card > svg {
   border-radius: 8px;
+  transform-origin: center;
+  animation: qr-breathe 3.2s ease-in-out infinite;
+  will-change: transform, filter;
+}
+
+@keyframes qr-breathe {
+  0%,
+  100% {
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.06));
+    transform: scale(1);
+  }
+  50% {
+    filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.16));
+    transform: scale(1.035);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .join-card > svg {
+    animation: none;
+  }
 }
 
 .join-card div {
