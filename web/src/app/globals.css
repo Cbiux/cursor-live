@@ -797,17 +797,21 @@ button {
   gap: 0.85rem;
   align-items: stretch;
   will-change: transform;
-  transform: translate3d(0, 0, 0);
+  animation-name: open-marquee;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  animation-duration: 45s;
 }
 
 .open-sequence {
   display: flex;
   gap: 0.85rem;
   align-items: stretch;
+  flex-shrink: 0;
 }
 
 .open-grid.is-paused .open-track {
-  /* Pause is handled in JS; keep class for styling hooks. */
+  animation-play-state: paused;
 }
 
 @keyframes open-marquee {
@@ -815,6 +819,7 @@ button {
     transform: translateX(0);
   }
   to {
+    /* One sequence + the gap between the duplicated strips. */
     transform: translateX(calc(-50% - 0.425rem));
   }
 }
@@ -937,7 +942,7 @@ button {
 
 @media (prefers-reduced-motion: reduce) {
   .open-track {
-    transform: none !important;
+    animation-duration: 120s !important;
   }
 
   .open-card,

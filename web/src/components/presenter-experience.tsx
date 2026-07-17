@@ -184,62 +184,12 @@ function ScaleResults({ responses }: { responses: ResponseRecord[] }) {
 
 function OpenResults({ responses }: { responses: ResponseRecord[] }) {
   const [selectedCard, setSelectedCard] = useState<string | null>(null);
-  const [paused, setPaused] = useState(false);
-  const trackRef = useRef<HTMLDivElement>(null);
-  const sequenceRef = useRef<HTMLDivElement>(null);
-  const offsetRef = useRef(0);
-  const frameRef = useRef<number | null>(null);
-  const pausedRef = useRef(false);
-  const selectedRef = useRef<string | null>(null);
   const items = useMemo(() => [...responses].reverse(), [responses]);
-
-  pausedRef.current = paused;
-  selectedRef.current = selectedCard;
-
-  useEffect(() => {
-    const track = trackRef.current;
-    const sequence = sequenceRef.current;
-    if (!track || !sequence || !items.length) return;
-
-    const speedPxPerSecond = 42;
-    let previous = performance.now();
-
-    const tick = (now: number) => {
-      const elapsed = Math.min((now - previous) / 1000, 0.05);
-      previous = now;
-
-      const loopWidth = sequence.offsetWidth;
-      if (
-        loopWidth > 0 &&
-        !pausedRef.current &&
-        !selectedRef.current &&
-        !window.matchMedia("(prefers-reduced-motion: reduce)").matches
-      ) {
-        const styles = window.getComputedStyle(track);
-        const gap = Number.parseFloat(styles.columnGap || styles.gap) || 0;
-        offsetRef.current -= speedPxPerSecond * elapsed;
-        const cycle = loopWidth + gap;
-        while (offsetRef.current <= -cycle) {
-          offsetRef.current += cycle;
-        }
-        track.style.transform = `translate3d(${offsetRef.current}px, 0, 0)`;
-      }
-
-      frameRef.current = window.requestAnimationFrame(tick);
-    };
-
-    frameRef.current = window.requestAnimationFrame(tick);
-    return () => {
-      if (frameRef.current !== null) {
-        window.cancelAnimationFrame(frameRef.current);
-      }
-    };
-  }, [items.length]);
 
   if (!items.length) return <WaitingResults />;
 
-  // Fill enough cards so the marquee always overflows the viewport.
-  const repeatCount = Math.max(2, Math.ceil(8 / items.length));
+  // Enough copies so the strip always overflows and the loop looks continuous.
+  const repeatCount = Math.max(2, Math.ceil(10 / Math.max(items.length, 1)));
   const sequence = Array.from({ length: repeatCount }, () => items).flat();
 
   const renderSequence = (copy: number) =>
@@ -265,18 +215,11 @@ function OpenResults({ responses }: { responses: ResponseRecord[] }) {
 
   return (
     <div
-      className={`open-grid ${paused || selectedCard ? "is-paused" : ""}`}
+      className={`open-grid ${selectedCard ? "is-paused" : ""}`}
       aria-label={`${items.length} respuestas abiertas`}
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => {
-        setPaused(false);
-        setSelectedCard(null);
-      }}
     >
-      <div className="open-track" ref={trackRef}>
-        <div className="open-sequence" ref={sequenceRef}>
-          {renderSequence(0)}
-        </div>
+      <div className="open-track">
+        <div className="open-sequence">{renderSequence(0)}</div>
         <div className="open-sequence" aria-hidden="true">
           {renderSequence(1)}
         </div>
