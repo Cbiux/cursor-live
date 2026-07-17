@@ -102,6 +102,25 @@ export async function hostAction(input: {
   return result;
 }
 
+export async function verifyPresentAccess(input: {
+  code: string;
+  hostKey: string;
+}) {
+  const response = await fetch("/api/room", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ kind: "verify-present", ...input }),
+  });
+  const result = (await response.json()) as {
+    error?: string;
+    room?: PublicRoomState;
+  };
+  if (!response.ok) {
+    throw new Error(result.error ?? "No se pudo verificar la sala.");
+  }
+  return result;
+}
+
 export async function saveDeck(input: {
   code: string;
   hostKey: string;

@@ -71,7 +71,8 @@ export async function POST(request: NextRequest) {
       | "save-deck"
       | "create-room"
       | "import-md"
-      | "import-questions";
+      | "import-questions"
+      | "verify-present";
     code?: string;
     participantId?: string;
     name?: string;
@@ -348,6 +349,34 @@ export async function POST(request: NextRequest) {
       value: body.value,
     });
     return NextResponse.json({ ok: true, record });
+  }
+
+  if (body.kind === "verify-present") {
+    const keyError = validateHostKeyInput(body.hostKey);
+    if (keyError) {
+      return NextResponse.json({ error: keyError }, { status: 400 });
+    }
+
+    const room = await getRoom(code);
+    if (!room.hostKeyHash) {
+      return NextResponse.json(
+        {
+          error:
+            "Esa sala no existe todavía. Créala o configúrala primero desde Hostear.",
+        },
+        { status: 404 },
+      );
+    }
+
+    const auth = await claimOrVerifyHostKey(code, body.hostKey!, {
+      allowClaim: false,
+    });
+    if (!auth.ok) return authErrorResponse(auth);
+
+    return NextResponse.json({
+      ok: true,
+      room: toPublicRoom(room),
+    });
   }
 
   if (body.kind === "host") {
