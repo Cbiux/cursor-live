@@ -1375,6 +1375,37 @@ button {
   line-height: 1.45;
 }
 
+.md-paste-label {
+  display: grid;
+  gap: 0.35rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.md-paste-area {
+  width: 100%;
+  min-height: 10rem;
+  resize: vertical;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--ink);
+  font-family: ui-monospace, "Cascadia Code", "Segoe UI Mono", monospace;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  padding: 0.7rem 0.75rem;
+}
+
+.md-paste-area:focus {
+  outline: 2px solid color-mix(in srgb, var(--ink) 18%, transparent);
+  outline-offset: 1px;
+}
+
+.md-upload-button {
+  width: 100%;
+  justify-content: center;
+}
+
 .code-prefix-field {
   display: flex;
   align-items: center;

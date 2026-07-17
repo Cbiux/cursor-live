@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
   BookOpen,
+  Check,
   ClipboardCopy,
   Copy,
   FileUp,
@@ -75,6 +76,7 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
   const [toolsQuestionId, setToolsQuestionId] = useState(
     defaultQuestions[0]?.id ?? 0,
   );
+  const [questionsMdPaste, setQuestionsMdPaste] = useState("");
   const questionsFileRef = useRef<HTMLInputElement>(null);
   const responsesFileRef = useRef<HTMLInputElement>(null);
 
@@ -231,19 +233,22 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
         buildQuestionsMdPrompt({ title }),
       );
       setMessage(
-        "Prompt + formato copiados. Pégalos en una IA, guarda el .md y súbelo aquí.",
+        "Prompt + formato copiados. Pégalos en una IA y pega el Markdown aquí (o súbelo como archivo).",
       );
     } catch {
       setMessage("No se pudo copiar el prompt.");
     }
   };
 
-  const configureFromQuestionsMd = async (file: File) => {
+  const configureFromQuestionsMd = async (markdown: string) => {
     if (!requireAccess()) return;
+    if (!markdown.trim()) {
+      setMessage("Pega el Markdown o sube un archivo .md.");
+      return;
+    }
     setSaving(true);
     setMessage("");
     try {
-      const markdown = await file.text();
       const result = await importQuestionsMd({
         code,
         hostKey,
@@ -255,16 +260,17 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
       if (result.questions?.length) {
         setQuestions(cloneQuestions(result.questions));
       }
+      setQuestionsMdPaste("");
       await refresh();
       window.history.replaceState({}, "", `/host?code=${code}`);
       setMessage(
-        `Sala ${code} configurada con ${result.importedQuestions ?? result.questions?.length ?? 0} preguntas desde el .md.`,
+        `Sala ${code} configurada con ${result.importedQuestions ?? result.questions?.length ?? 0} preguntas desde el Markdown.`,
       );
     } catch (cause) {
       setMessage(
         cause instanceof Error
           ? cause.message
-          : "No se pudo configurar la sala con el .md.",
+          : "No se pudo configurar la sala con el Markdown.",
       );
     } finally {
       setSaving(false);
@@ -424,7 +430,7 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
               <FileUp size={16} />
               <div>
                 <strong>Configurar con Markdown</strong>
-                <span>Un prompt + un .md = sala lista</span>
+                <span>Pega el texto o sube un archivo</span>
               </div>
             </div>
 
@@ -435,18 +441,40 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
             >
               <ClipboardCopy size={16} /> Copiar prompt + formato
             </button>
+
+            <label className="md-paste-label">
+              Pegar Markdown
+              <textarea
+                className="md-paste-area"
+                rows={8}
+                value={questionsMdPaste}
+                onChange={(event) => setQuestionsMdPaste(event.target.value)}
+                placeholder={`# Título del evento\n\n## 1. word-cloud | ¿Tu pregunta?\nAyuda corta\n\n## 2. choice | Otra pregunta\nElige una\n- Opción A\n- Opción B`}
+                spellCheck={false}
+              />
+            </label>
+
             <button
               type="button"
               className="secondary-button"
-              disabled={saving || !code}
-              onClick={() => questionsFileRef.current?.click()}
+              disabled={saving || !code || !questionsMdPaste.trim()}
+              onClick={() => void configureFromQuestionsMd(questionsMdPaste)}
             >
               {saving ? (
                 <LoaderCircle className="spin" size={16} />
               ) : (
-                <FileUp size={16} />
+                <Check size={16} />
               )}
-              Subir .md y configurar sala
+              Aplicar Markdown pegado
+            </button>
+
+            <button
+              type="button"
+              className="ghost-button md-upload-button"
+              disabled={saving || !code}
+              onClick={() => questionsFileRef.current?.click()}
+            >
+              <FileUp size={16} /> Subir archivo .md
             </button>
             <input
               ref={questionsFileRef}
@@ -455,11 +483,15 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
               hidden
               onChange={(event) => {
                 const file = event.target.files?.[0];
-                if (file) void configureFromQuestionsMd(file);
+                if (!file) return;
+                void file.text().then((text) => {
+                  setQuestionsMdPaste(text);
+                  void configureFromQuestionsMd(text);
+                });
               }}
             />
             <p className="studio-hint">
-              1) Copia el prompt · 2) Pégalo en una IA · 3) Guarda el .md · 4) Súbelo aquí.
+              1) Copia el prompt · 2) Pégalo en una IA · 3) Pega el resultado aquí o sube el .md.
             </p>
           </section>
 

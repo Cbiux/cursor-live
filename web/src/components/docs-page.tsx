@@ -79,8 +79,8 @@ export function DocsPage() {
             </li>
             <li>
               {es
-                ? "Opción rápida: Copiar prompt + formato → pégalo en una IA → guarda el .md → Subir .md y configurar sala."
-                : "Quick path: Copy prompt + format → paste into an AI → save the .md → Upload .md and configure room."}
+                ? "Opción rápida: Copiar prompt + formato → pégalo en una IA → pega el Markdown en Host (o sube el .md)."
+                : "Quick path: Copy prompt + format → paste into an AI → paste the Markdown in Host (or upload the .md)."}
             </li>
             <li>
               {es
@@ -222,8 +222,8 @@ export function DocsPage() {
           </h2>
           <p>
             {es
-              ? "En el panel Host: un botón copia el prompt + formato; otro sube el .md y configura la sala (título y preguntas)."
-              : "In the Host panel: one button copies the prompt + format; another uploads the .md and configures the room (title and questions)."}
+              ? "En el panel Host: copia el prompt + formato, pega el Markdown en el cuadro (o sube un .md) y aplica para configurar la sala."
+              : "In the Host panel: copy the prompt + format, paste the Markdown into the box (or upload a .md), then apply to configure the room."}
           </p>
           <p>
             {es ? "Ejemplo en" : "Example at"}{" "}
