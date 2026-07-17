@@ -59,7 +59,7 @@ export function AppHeader() {
 
         <a
           className="credits-badge"
-          href="https://github.com/cbiux"
+          href="https://linktr.ee/cbiux"
           target="_blank"
           rel="noreferrer"
         >
