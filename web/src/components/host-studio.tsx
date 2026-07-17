@@ -30,6 +30,10 @@ function newId() {
   return Date.now() + Math.floor(Math.random() * 1000);
 }
 
+function hostKeyStorageKey(code: string) {
+  return `cursor-live-host-key:${code || "new"}`;
+}
+
 export function HostStudio({ initialCode }: { initialCode: string }) {
   const { t } = usePreferences();
   const [code, setCode] = useState(initialCode);
@@ -45,19 +49,28 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      setHostKey(window.localStorage.getItem("cursor-live-host-key") ?? "");
+      const saved =
+        window.localStorage.getItem(hostKeyStorageKey(code)) ??
+        window.localStorage.getItem("cursor-live-host-key") ??
+        "";
+      setHostKey(saved);
     }, 0);
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [code]);
 
   useEffect(() => {
-    if (!data) return;
+    if (!data || !code) return;
     const timer = window.setTimeout(() => {
       setTitle(data.room.title || "Mi experiencia en vivo");
       setQuestions(cloneQuestions(data.questions));
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [data]);
+  }, [code, data]);
+
+  const rememberKey = (nextCode: string, key: string) => {
+    window.localStorage.setItem(hostKeyStorageKey(nextCode), key);
+    window.localStorage.setItem("cursor-live-host-key", key);
+  };
 
   const updateQuestion = (id: number, patch: Partial<Question>) => {
     setQuestions((current) =>
@@ -109,13 +122,21 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
   };
 
   const persist = async () => {
+    if (!code) {
+      setMessage("Crea una sala nueva o escribe el código de una existente.");
+      return;
+    }
     setSaving(true);
     setMessage("");
     try {
-      window.localStorage.setItem("cursor-live-host-key", hostKey);
+      rememberKey(code, hostKey);
       await saveDeck({ code, hostKey, title, questions });
       await refresh();
-      setMessage("Guardado. Ya puedes abrir la presentación.");
+      setMessage(
+        hasHostKey
+          ? "Guardado. Usa la misma clave para presentar y gestionar."
+          : "Sala reclamada y guardada. Guarda tu clave: la necesitarás para gestionarla.",
+      );
     } catch (cause) {
       setMessage(cause instanceof Error ? cause.message : "No se pudo guardar.");
     } finally {
@@ -127,16 +148,19 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
     setSaving(true);
     setMessage("");
     try {
-      window.localStorage.setItem("cursor-live-host-key", hostKey);
       const result = await createRoom({
+        code: code || undefined,
         hostKey,
         title: title || "Mi experiencia en vivo",
         questions,
       });
       const nextCode = result.room?.code;
       if (!nextCode) throw new Error("No se generó el código.");
+      rememberKey(nextCode, hostKey);
       setCode(nextCode);
-      setMessage(`Sala creada: ${nextCode}`);
+      setMessage(
+        `Sala creada: ${nextCode}. Guarda tu clave — solo quien la tenga puede gestionarla.`,
+      );
       window.history.replaceState({}, "", `/host?code=${nextCode}`);
     } catch (cause) {
       setMessage(cause instanceof Error ? cause.message : "No se pudo crear.");
@@ -146,13 +170,14 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
   };
 
   const copyJoin = async () => {
+    if (!code) return;
     const url = `${window.location.origin}/join?code=${code}`;
     await navigator.clipboard.writeText(url);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1500);
   };
 
-  if (!data) {
+  if (code && !data) {
     return (
       <main className="studio-shell center-screen">
         <LoaderCircle className="spin" />
@@ -160,6 +185,10 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
       </main>
     );
   }
+
+  const participantCount = data?.participants.length ?? 0;
+  const hasHostKey = data?.room.hasHostKey ?? false;
+  const persistent = data?.persistent ?? false;
 
   return (
     <main className="studio-shell">
@@ -171,10 +200,16 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
           <h1>Edita tu experiencia</h1>
         </div>
         <div className="studio-actions">
-          <Link className="ghost-button" href={`/present?code=${code}`}>
+          <Link
+            className="ghost-button"
+            href={code ? `/present?code=${code}` : "/present"}
+          >
             <MonitorPlay size={16} /> Presentar
           </Link>
-          <Link className="ghost-button" href={`/join?code=${code}`}>
+          <Link
+            className="ghost-button"
+            href={code ? `/join?code=${code}` : "/join"}
+          >
             Probar unirse
           </Link>
         </div>
@@ -203,6 +238,7 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
                     .slice(0, 12),
                 )
               }
+              placeholder="Vacío = se genera al crear"
               maxLength={12}
             />
           </label>
@@ -214,24 +250,58 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
               <input
                 value={hostKey}
                 onChange={(event) => setHostKey(event.target.value)}
-                placeholder="Opcional en local"
+                placeholder="Mín. 4 caracteres"
                 type="password"
+                autoComplete="new-password"
               />
             </div>
           </label>
+          <p className="studio-hint">
+            {hasHostKey && code
+              ? "Esta sala está protegida. Necesitas la clave para guardar o presentar."
+              : "Al crear o guardar, defines la clave de esta sala. Cada host usa la suya."}
+          </p>
 
           <div className="sidebar-buttons">
-            <button className="primary-button" disabled={saving} onClick={() => void persist()}>
-              {saving ? <LoaderCircle className="spin" size={16} /> : <Save size={16} />}
+            <button
+              className="primary-button"
+              disabled={saving}
+              onClick={() => void createNew()}
+            >
+              {saving ? (
+                <LoaderCircle className="spin" size={16} />
+              ) : (
+                <Plus size={16} />
+              )}
+              Crear mi sala
+            </button>
+            <button
+              className="secondary-button"
+              disabled={saving || !code}
+              onClick={() => void persist()}
+            >
+              {saving ? (
+                <LoaderCircle className="spin" size={16} />
+              ) : (
+                <Save size={16} />
+              )}
               Guardar cambios
             </button>
-            <button className="secondary-button" disabled={saving} onClick={() => void createNew()}>
-              <Plus size={16} /> Nueva sala
-            </button>
-            <button className="secondary-button" onClick={() => void copyJoin()}>
+            <button
+              className="secondary-button"
+              disabled={!code}
+              onClick={() => void copyJoin()}
+            >
               <Copy size={16} /> {copied ? "Copiado" : "Copiar link de unirse"}
             </button>
-            <Link className="primary-button present-link" href={`/present?code=${code}`}>
+            <Link
+              className="primary-button present-link"
+              href={code ? `/present?code=${code}` : "#"}
+              aria-disabled={!code}
+              onClick={(event) => {
+                if (!code) event.preventDefault();
+              }}
+            >
               Abrir presentación <ArrowRight size={16} />
             </Link>
           </div>
@@ -240,8 +310,9 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
 
           <div className="studio-meta">
             <span>{questions.length} preguntas</span>
-            <span>{data.participants.length} en lobby</span>
-            <span>{data.persistent ? "Redis" : "Demo local"}</span>
+            <span>{participantCount} en lobby</span>
+            <span>{hasHostKey ? "Con clave" : "Sin clave aún"}</span>
+            <span>{persistent ? "Redis" : "Demo local"}</span>
           </div>
         </aside>
 
@@ -249,21 +320,30 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
           {questions.map((question, index) => (
             <article className="question-card" key={question.id}>
               <div className="question-card-top">
-                <span>#{index + 1}</span>
-                <div className="question-card-tools">
-                  <button type="button" onClick={() => moveQuestion(question.id, -1)}>
+                <strong>
+                  {index + 1}. {QUESTION_TYPE_LABELS[question.type]}
+                </strong>
+                <div className="question-card-actions">
+                  <button
+                    type="button"
+                    onClick={() => moveQuestion(question.id, -1)}
+                    disabled={index === 0}
+                  >
                     ↑
                   </button>
-                  <button type="button" onClick={() => moveQuestion(question.id, 1)}>
+                  <button
+                    type="button"
+                    onClick={() => moveQuestion(question.id, 1)}
+                    disabled={index === questions.length - 1}
+                  >
                     ↓
                   </button>
                   <button
                     type="button"
-                    className="danger"
                     onClick={() => removeQuestion(question.id)}
                     disabled={questions.length <= 1}
                   >
-                    <Trash2 size={15} />
+                    <Trash2 size={14} />
                   </button>
                 </div>
               </div>
@@ -276,11 +356,13 @@ export function HostStudio({ initialCode }: { initialCode: string }) {
                     changeType(question.id, event.target.value as QuestionType)
                   }
                 >
-                  {Object.entries(QUESTION_TYPE_LABELS).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
+                  {(Object.keys(QUESTION_TYPE_LABELS) as QuestionType[]).map(
+                    (type) => (
+                      <option key={type} value={type}>
+                        {QUESTION_TYPE_LABELS[type]}
+                      </option>
+                    ),
+                  )}
                 </select>
               </label>
 

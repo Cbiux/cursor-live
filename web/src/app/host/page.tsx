@@ -6,9 +6,10 @@ export default async function HostPage({
   searchParams: Promise<{ code?: string }>;
 }) {
   const params = await searchParams;
-  const code = (params.code ?? "CURSORCR")
+  const code = (params.code ?? "")
     .toUpperCase()
-    .replace(/[^A-Z0-9]/g, "");
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 12);
 
-  return <HostStudio initialCode={code || "CURSORCR"} />;
+  return <HostStudio initialCode={code} />;
 }

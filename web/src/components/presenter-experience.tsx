@@ -212,7 +212,11 @@ export function PresenterExperience({ code }: { code: string }) {
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      setHostKey(window.localStorage.getItem("cursor-live-host-key") ?? "");
+      setHostKey(
+        window.localStorage.getItem(`cursor-live-host-key:${code}`) ??
+          window.localStorage.getItem("cursor-live-host-key") ??
+          "",
+      );
       setJoinUrl(`${window.location.origin}/join?code=${code}`);
     }, 0);
     return () => window.clearTimeout(timer);
@@ -241,7 +245,10 @@ export function PresenterExperience({ code }: { code: string }) {
     const timer = window.setInterval(() => {
       void hostAction({
         code,
-        hostKey: window.localStorage.getItem("cursor-live-host-key") ?? "",
+        hostKey:
+          window.localStorage.getItem(`cursor-live-host-key:${code}`) ??
+          window.localStorage.getItem("cursor-live-host-key") ??
+          "",
         action: "next",
       }).then(() => refresh());
     }, 8000);
@@ -256,6 +263,7 @@ export function PresenterExperience({ code }: { code: string }) {
     setNotice("");
     try {
       await hostAction({ code, hostKey, action, targetIndex });
+      window.localStorage.setItem(`cursor-live-host-key:${code}`, hostKey);
       window.localStorage.setItem("cursor-live-host-key", hostKey);
       await refresh();
     } catch (cause) {
@@ -346,7 +354,7 @@ export function PresenterExperience({ code }: { code: string }) {
             <input
               value={hostKey}
               onChange={(event) => setHostKey(event.target.value)}
-              placeholder="Clave del host"
+              placeholder="Clave de esta sala"
               type="password"
               aria-label="Clave del host"
             />
@@ -443,7 +451,7 @@ export function PresenterExperience({ code }: { code: string }) {
           <input
             value={hostKey}
             onChange={(event) => setHostKey(event.target.value)}
-            placeholder="Clave del host"
+            placeholder="Clave de esta sala"
             type="password"
             aria-label="Clave del host"
           />

@@ -69,8 +69,13 @@ export function DocsPage() {
           <ol>
             <li>
               {es
-                ? "Abre Hostear y ajusta el título y el código de sala."
-                : "Open Host and set the title and room code."}
+                ? "Abre Hostear, define una clave (mín. 4 caracteres) y pulsa Crear mi sala."
+                : "Open Host, set a key (min. 4 characters), and click Create my room."}
+            </li>
+            <li>
+              {es
+                ? "Guarda la clave: solo quien la tenga puede editar o presentar esa sala."
+                : "Save the key: only someone with it can edit or present that room."}
             </li>
             <li>
               {es
@@ -82,8 +87,8 @@ export function DocsPage() {
             </li>
             <li>
               {es
-                ? "Abre Presentar y comparte el QR o el código."
-                : "Open Present and share the QR or room code."}
+                ? "Abre Presentar, escribe la misma clave y comparte el QR o el código."
+                : "Open Present, enter the same key, and share the QR or room code."}
             </li>
             <li>
               {es
@@ -206,8 +211,8 @@ export function DocsPage() {
             </li>
             <li>
               {es
-                ? "Demo local en memoria; producción con Upstash Redis y HOST_KEY."
-                : "Local in-memory demo; production with Upstash Redis and HOST_KEY."}
+                ? "Demo local en memoria; en producción usa Upstash Redis. Cada sala tiene su propia clave de host."
+                : "Local in-memory demo; production uses Upstash Redis. Each room has its own host key."}
             </li>
           </ul>
         </section>
@@ -227,8 +232,8 @@ export function DocsPage() {
             </li>
             <li>
               {es
-                ? "En producción, configura Upstash Redis y HOST_KEY."
-                : "In production, configure Upstash Redis and HOST_KEY."}
+                ? "En producción, configura Upstash Redis. Cada host crea su sala con su propia clave."
+                : "In production, configure Upstash Redis. Each host creates a room with their own key."}
             </li>
             <li>
               {es
