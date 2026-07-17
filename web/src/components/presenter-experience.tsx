@@ -311,13 +311,15 @@ export function PresenterExperience({ code }: { code: string }) {
       <main className="presenter-shell lobby-shell">
         <header className="presenter-header">
           <div className="event-brand">
-            <Image
-              src="/logo-source-dark.png"
-              alt="Cursor"
-              width={30}
-              height={30}
-              className="cursor-logo"
-            />
+            <Link href="/" className="brand-home" aria-label="Volver al inicio">
+              <Image
+                src="/logo-source-dark.png"
+                alt="Cursor Live"
+                width={30}
+                height={30}
+                className="cursor-logo"
+              />
+            </Link>
             <span>{data.room.title}</span>
           </div>
           <div className="room-meta">
@@ -411,13 +413,15 @@ export function PresenterExperience({ code }: { code: string }) {
     <main className="presenter-shell">
       <header className="presenter-header">
         <div className="event-brand">
-          <Image
-            src="/logo-source-dark.png"
-            alt="Cursor"
-            width={30}
-            height={30}
-            className="cursor-logo"
-          />
+          <Link href="/" className="brand-home" aria-label="Volver al inicio">
+            <Image
+              src="/logo-source-dark.png"
+              alt="Cursor Live"
+              width={30}
+              height={30}
+              className="cursor-logo"
+            />
+          </Link>
           <span>{data.room.title}</span>
         </div>
         <div className="room-meta">
