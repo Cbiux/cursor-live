@@ -477,7 +477,7 @@ button {
   border-radius: 999px;
   background: var(--black);
   padding: 0.65rem 1rem;
-  color: white;
+  color: var(--bg);
   font-size: 0.95rem;
   font-weight: 600;
   animation: rise 420ms ease;
@@ -585,7 +585,7 @@ button {
 
 .word-cloud span {
   display: inline-block;
-  color: #333;
+  color: var(--ink);
   font-weight: 540;
   letter-spacing: -0.04em;
   cursor: default;
@@ -1100,7 +1100,7 @@ button {
   border-radius: 12px;
   background: var(--panel);
   padding: 0.8rem 1rem;
-  color: #222;
+  color: var(--ink);
   text-align: left;
 }
 
@@ -1108,7 +1108,7 @@ button {
 .scale-grid button.selected {
   border-color: var(--black);
   background: var(--black);
-  color: white;
+  color: var(--bg);
 }
 
 .option-button b {
@@ -2160,6 +2160,7 @@ html[data-theme="dark"] {
   --black: #f3f3ee;
   --card: #1a1a16;
   --shadow: 0 18px 48px rgba(0, 0, 0, 0.35);
+  color-scheme: dark;
 }
 
 html[data-theme="dark"] .brand-logo,
@@ -2214,6 +2215,74 @@ html[data-theme="dark"] .segment.active,
 html[data-theme="dark"] .docs-footer-button {
   background: #f3f3ee;
   color: #141412;
+}
+
+html[data-theme="dark"] .name-pill,
+html[data-theme="dark"] .name-pill:nth-child(3n) {
+  background: #f3f3ee;
+  color: #141412;
+}
+
+html[data-theme="dark"] .option-button,
+html[data-theme="dark"] .scale-grid button,
+html[data-theme="dark"] .question-card-tools button,
+html[data-theme="dark"] .add-row button {
+  color: var(--ink);
+}
+
+html[data-theme="dark"] .option-button b {
+  background: #d1d1ca;
+  color: #141412;
+}
+
+html[data-theme="dark"] .option-button.selected,
+html[data-theme="dark"] .scale-grid button.selected {
+  border-color: #f3f3ee;
+  background: #f3f3ee;
+  color: #141412;
+}
+
+html[data-theme="dark"] .presenter-controls {
+  border-color: var(--line);
+  background: rgba(28, 28, 24, 0.97);
+}
+
+html[data-theme="dark"] .presenter-controls button,
+html[data-theme="dark"] .presenter-controls .control-link {
+  color: var(--ink);
+}
+
+html[data-theme="dark"] .presenter-controls .play-control {
+  background: #f3f3ee;
+  color: #141412;
+}
+
+html[data-theme="dark"] .studio-message {
+  background: var(--green-soft);
+  color: var(--ink);
+}
+
+html[data-theme="dark"] .control-notice {
+  border-color: rgba(255, 138, 138, 0.35);
+  background: #2a1717;
+  color: #ffb4b4;
+}
+
+html[data-theme="dark"] .landing-form-error,
+html[data-theme="dark"] .response-message.error,
+html[data-theme="dark"] .question-card-tools button.danger {
+  color: #ff9f98;
+}
+
+html[data-theme="dark"] .submit-button:disabled {
+  background: #34342f;
+  color: #a8a8a1;
+}
+
+html[data-theme="dark"] input::placeholder,
+html[data-theme="dark"] textarea::placeholder {
+  color: #9a9a93;
+  opacity: 1;
 }
 
 .pos-header {
