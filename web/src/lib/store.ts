@@ -113,7 +113,7 @@ function getRedis() {
 }
 
 function runtimeCache() {
-  return getCache({ namespace: "cursor-live" });
+  return getCache({ namespace: "cursor-live-v2" });
 }
 
 async function cacheGet<T>(key: string): Promise<T | null> {
@@ -146,19 +146,20 @@ async function cacheDelete(key: string) {
 }
 
 function roomKey(code: string) {
-  return `cursor-live:room:${code}`;
+  // Bump the namespace to invalidate every previous room snapshot.
+  return `cursor-live:v2:room:${code}`;
 }
 
 function questionsKey(code: string) {
-  return `cursor-live:questions:${code}`;
+  return `cursor-live:v2:questions:${code}`;
 }
 
 function participantsKey(code: string) {
-  return `cursor-live:participants:${code}`;
+  return `cursor-live:v2:participants:${code}`;
 }
 
 function responsesKey(code: string) {
-  return `cursor-live:responses:${code}`;
+  return `cursor-live:v2:responses:${code}`;
 }
 
 function roomTags(code: string) {
