@@ -63,7 +63,7 @@ Elige tus 3 temas más emocionantes
 export function buildQuestionsMdPrompt(input?: { title?: string }) {
   const title = input?.title?.trim() || "Cursor Live";
 
-  return `Genera un archivo Markdown para configurar una sala de Cursor Live (experiencia tipo Mentimeter).
+  return `Genera un archivo Markdown para configurar una sesión interactiva de Cursor Live.
 
 Quiero que inventes / adaptes las preguntas para este evento: "${title}".
 

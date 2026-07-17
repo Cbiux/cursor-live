@@ -1,83 +1,53 @@
 # Cursor Live
 
-Experiencias interactivas para meetups, clases y eventos en vivo.
+Plataforma de interacción en vivo para meetups, clases y eventos.
 
-[Abrir Cursor Live](https://cursor-live.vercel.app) ·
-[Ver documentación](https://cursor-live.vercel.app/docs) ·
-[Repositorio](https://github.com/Cbiux/cursor-live)
+[Abrir aplicación](https://cursor-live.vercel.app) · [Documentación](https://cursor-live.vercel.app/docs)
 
-Cursor Live es una alternativa ligera y personalizable al flujo de herramientas como Mentimeter. Un host crea una sala, proyecta los resultados y la audiencia responde desde el teléfono sin registrarse.
+Un host crea una sala, proyecta los resultados y la audiencia responde desde el teléfono sin registrarse.
 
-## Qué puedes hacer
+## Funciones
 
-- Crear salas con códigos fáciles de compartir, como `CURSOR1`.
-- Proteger cada sala con una clave de host.
-- Editar títulos, instrucciones, preguntas y opciones.
-- Personalizar los mensajes que ve la audiencia.
-- Importar preguntas desde Markdown pegado o desde un archivo `.md`.
-- Generar y cargar respuestas de prueba para ensayar una presentación.
-- Proyectar un lobby con QR, código y participantes conectados.
-- Descargar el QR como PNG para compartirlo o imprimirlo.
-- Mostrar resultados en vivo con avance manual o automático.
-- Usar español o inglés y modo claro u oscuro.
-- Ejecutar la experiencia sin cuentas para los participantes.
-
-## Modos de la aplicación
-
-### Host
-
-El panel de host permite crear o reclamar una sala, configurar la experiencia y preparar datos de prueba.
-
-- Edita las preguntas manualmente.
-- Reordena o elimina preguntas.
-- Configura el lobby y los mensajes de espera.
-- Copia prompts para generar preguntas o respuestas con una IA.
-- Pega Markdown o sube archivos.
-- Recibe confirmaciones y errores mediante notificaciones emergentes.
-
-Ruta: [`/host`](https://cursor-live.vercel.app/host)
-
-### Presentar
-
-La vista de presentación está diseñada para proyectarse en una pantalla grande.
-
-- Lobby con QR y código de acceso.
-- Lista de personas conectadas.
+- Salas con códigos fáciles de compartir, como `CURSOR1`.
+- Clave independiente para administrar cada sala.
+- Editor de preguntas, instrucciones y opciones.
+- Lobby con QR, código y participantes conectados.
 - Resultados actualizados en vivo.
-- Navegación manual o automática.
-- Modo pantalla completa.
-- Carrusel horizontal para respuestas abiertas.
+- Importación de preguntas y respuestas de prueba mediante Markdown.
+- Carrusel continuo para respuestas abiertas.
+- Descarga del QR en PNG.
+- Español e inglés.
+- Modo claro y oscuro.
 
-Ruta: [`/present`](https://cursor-live.vercel.app/present)
+## Modos
 
-### Participar
-
-La audiencia entra desde el celular, escribe un nombre opcional y responde las preguntas en secuencia. Si no escribe un nombre, aparece como `Anónimo`.
-
-Ruta: [`/join`](https://cursor-live.vercel.app/join)
+- **Host (`/host`):** crea la sala, edita preguntas y prepara respuestas demo.
+- **Presentar (`/present`):** proyecta el lobby y los resultados en vivo.
+- **Participar (`/join`):** permite responder desde el celular.
+- **Documentación (`/docs`):** explica el flujo completo de uso.
 
 ## Tipos de pregunta
 
-- **Nube de palabras:** agrupa respuestas equivalentes y aumenta su tamaño según la frecuencia.
-- **Opción múltiple:** muestra la distribución en barras.
-- **Escala 0–10:** calcula el promedio y presenta un histograma.
-- **Ranking:** permite elegir y ordenar un top 3.
-- **Respuesta abierta:** muestra respuestas cortas en un carrusel continuo.
+- Nube de palabras
+- Opción múltiple
+- Escala 0–10
+- Ranking top 3
+- Respuesta abierta
 
-## Flujo recomendado
+## Uso rápido
 
 1. Abre el panel de Host.
-2. Escribe un número para crear el código, por ejemplo `CURSOR1`.
+2. Elige un código, por ejemplo `CURSOR1`.
 3. Define una clave de al menos cuatro caracteres.
-4. Edita las preguntas o impórtalas desde Markdown.
-5. Guarda o reclama la sala.
+4. Edita o importa las preguntas.
+5. Guarda la sala.
 6. Abre Presentar con el mismo código y clave.
-7. Comparte el QR o el código con la audiencia.
-8. Pulsa **Comenzar** cuando todos estén listos.
+7. Comparte el QR con la audiencia.
+8. Pulsa **Comenzar**.
 
-## Configuración con Markdown
+## Markdown
 
-Cursor Live puede convertir Markdown en un deck de preguntas:
+Las preguntas pueden escribirse o generarse con este formato:
 
 ```md
 # Cursor Meetup
@@ -89,7 +59,6 @@ Responde con una palabra
 Selecciona una opción
 - Nunca lo he usado
 - Lo he probado
-- Lo uso varias veces por semana
 - Lo uso todos los días
 
 ## 3. open | ¿Qué proyecto estás construyendo?
@@ -98,11 +67,7 @@ Máximo 7 palabras
 
 Tipos válidos: `word-cloud`, `choice`, `scale`, `ranking` y `open`.
 
-Ejemplo completo: [`web/public/examples/questions-example.md`](./web/public/examples/questions-example.md)
-
-## Respuestas de prueba
-
-Para ensayar la proyección puedes crear respuestas demo automáticamente o importar Markdown:
+También puedes importar respuestas de prueba:
 
 ```md
 # Respuestas Cursor Live
@@ -112,38 +77,25 @@ Una herramienta para documentar APIs
 
 ### Bruno López
 Un asistente para equipos remotos
-
-### Camila Rojas
-Automatización para pequeños negocios
 ```
 
-También se acepta el formato corto:
+Ejemplos:
 
-```md
-- Diego Mora: AI Notes
-- Elena Vargas: Local LLM
-- Fabián Solís | Green Route
-```
-
-Ejemplo completo: [`web/public/examples/responses-example.md`](./web/public/examples/responses-example.md)
+- [`questions-example.md`](./web/public/examples/questions-example.md)
+- [`responses-example.md`](./web/public/examples/responses-example.md)
 
 ## Stack
 
-- Next.js 16 con App Router y Turbopack
+- Next.js 16
 - React 19
 - TypeScript
 - Vercel Functions y Runtime Cache
 - Upstash Redis opcional
-- `qrcode.react`
-- Lucide React
-- CSS personalizado, sin framework de componentes
+- QRCode React y Lucide React
 
 ## Desarrollo local
 
-Requisitos:
-
-- Node.js 20 o superior
-- npm
+Requiere Node.js 20 o superior.
 
 ```bash
 git clone https://github.com/Cbiux/cursor-live.git
@@ -154,96 +106,62 @@ npm run dev
 
 Abre [http://localhost:3000](http://localhost:3000).
 
-### Scripts
+Comandos disponibles:
 
 ```bash
-npm run dev      # servidor de desarrollo
-npm run build    # build de producción
-npm run start    # ejecutar el build
-npm run lint     # revisar reglas de código
-npx tsc --noEmit # verificar tipos
+npm run dev
+npm run build
+npm run start
+npm run lint
+npx tsc --noEmit
 ```
 
 ## Variables de entorno
-
-Todas son opcionales para desarrollo local:
 
 ```env
 # Clave administrativa global opcional
 HOST_KEY=
 
-# Persistencia opcional con Upstash Redis
+# Persistencia opcional
 UPSTASH_REDIS_REST_URL=
 UPSTASH_REDIS_REST_TOKEN=
 ```
 
-Sin Redis:
+Sin Redis, el desarrollo local usa memoria y Vercel utiliza Runtime Cache. Las sesiones tienen una duración configurada de 12 horas.
 
-- En local, el estado vive en memoria y se pierde al reiniciar el proceso.
-- En Vercel, la aplicación utiliza Runtime Cache.
+## Despliegue
 
-Con Upstash Redis, salas, participantes y respuestas se almacenan en Redis. Las sesiones tienen una duración configurada de 12 horas.
-
-## Despliegue en Vercel
-
-El proyecto de Next.js vive en [`web/`](./web), por lo que Vercel debe usar:
+La aplicación Next.js vive en `web/`. Configura Vercel con:
 
 - **Root Directory:** `web`
-- **Framework Preset:** Next.js
-- **Install Command:** `npm install`
+- **Framework:** Next.js
 - **Build Command:** `npm run build`
-
-También puedes desplegar desde la CLI:
 
 ```bash
 npx vercel --prod
 ```
 
-Producción actual: [cursor-live.vercel.app](https://cursor-live.vercel.app)
-
-## Estructura del repositorio
+## Estructura
 
 ```text
 .
 ├── README.md
-├── MENTIMETER.md
 └── web/
     ├── public/
     │   └── examples/
-    └── src/
-        ├── app/
-        │   └── api/room/
-        ├── components/
-        └── lib/
+    ├── src/
+    │   ├── app/
+    │   ├── components/
+    │   └── lib/
+    ├── package.json
+    └── vercel.json
 ```
 
-Piezas principales:
+`web/` se mantiene como raíz de la aplicación para conservar la configuración de despliegue existente.
 
-- `host-studio.tsx`: editor y herramientas del host.
-- `presenter-experience.tsx`: lobby y resultados proyectados.
-- `audience-experience.tsx`: flujo móvil de participantes.
-- `store.ts`: persistencia de salas, participantes y respuestas.
-- `questions-md.ts`: importación de preguntas.
-- `responses-md.ts`: importación de respuestas de prueba.
-- `preferences.tsx`: idioma y tema.
+## Notas para uso público
 
-## Consideraciones antes de abrirlo al público
-
-La aplicación funciona bien para demos, meetups y comunidades pequeñas. Para operar como servicio público conviene agregar:
-
-- autenticación de usuarios;
-- rate limiting y protección contra abuso;
-- límites de salas y respuestas;
-- moderación de contenido;
-- observabilidad y alertas de costos;
-- política de privacidad y términos de uso;
-- almacenamiento persistente dedicado.
-
-Los códigos de sala no son secretos. La clave del host protege la edición y la presentación, pero no sustituye un sistema completo de autenticación.
-
-## Guion original del meetup
-
-[`MENTIMETER.md`](./MENTIMETER.md) contiene la propuesta editorial que dio origen a la experiencia para Cursor Meetup Costa Rica.
+Antes de operar como servicio abierto conviene agregar autenticación, rate limiting, moderación, límites de uso, monitoreo de costos y una política de privacidad.
 
 ## Autor
 

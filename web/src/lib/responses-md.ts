@@ -56,7 +56,7 @@ export function buildResponsesMdPrompt(input: {
       ? `\nSi generas varias preguntas, separa cada una con un heading ## y el título exacto de la pregunta.\n`
       : "";
 
-  return `Genera un archivo Markdown con exactamente ${count} respuestas realistas en español para una experiencia en vivo tipo Mentimeter (Cursor Live).
+  return `Genera un archivo Markdown con exactamente ${count} respuestas realistas en español para una sesión interactiva de Cursor Live.
 
 ${questionBlock}
 ${multi}

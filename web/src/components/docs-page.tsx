@@ -30,8 +30,8 @@ export function DocsPage() {
           <h2>{es ? "Qué es Cursor Live" : "What is Cursor Live"}</h2>
           <p>
             {es
-              ? "Cursor Live es una experiencia interactiva tipo Mentimeter para meetups. El host edita las preguntas, proyecta un carrusel en vivo y la audiencia responde desde el celular tras escribir su nombre."
-              : "Cursor Live is a Mentimeter-style interactive experience for meetups. The host edits questions, projects a live carousel, and the audience answers from their phones after entering a name."}
+              ? "Cursor Live es una plataforma de interacción en vivo para meetups. El host edita las preguntas, proyecta los resultados y la audiencia responde desde el celular tras escribir su nombre."
+              : "Cursor Live is a live interaction platform for meetups. The host edits questions, presents the results, and the audience answers from their phones after entering a name."}
           </p>
         </section>
 
