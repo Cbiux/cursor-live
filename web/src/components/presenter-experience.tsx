@@ -182,36 +182,47 @@ function ScaleResults({ responses }: { responses: ResponseRecord[] }) {
 
 function OpenResults({ responses }: { responses: ResponseRecord[] }) {
   const [selectedCard, setSelectedCard] = useState<string | null>(null);
-  const items = [...responses].reverse();
+  const [paused, setPaused] = useState(false);
+  const items = useMemo(() => [...responses].reverse(), [responses]);
   if (!items.length) return <WaitingResults />;
+
+  // Duplicate the track so the leftward loop feels continuous.
+  const loop = items.length < 4 ? [...items, ...items, ...items] : [...items, ...items];
+  const durationSeconds = Math.max(18, loop.length * 2.4);
 
   return (
     <div
-      className="open-grid"
+      className={`open-grid ${paused || selectedCard ? "is-paused" : ""}`}
       aria-label={`${items.length} respuestas abiertas`}
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => {
+        setPaused(false);
+        setSelectedCard(null);
+      }}
     >
-      {items.map((item, index) => (
-        <button
-          type="button"
-          className={`open-card ${selectedCard === `${item.participantId}-${item.createdAt}` ? "featured selected" : ""}`}
-          key={`${item.participantId}-${item.createdAt}-${index}`}
-          aria-pressed={
-            selectedCard === `${item.participantId}-${item.createdAt}`
-          }
-          onClick={(event) => {
-            const key = `${item.participantId}-${item.createdAt}`;
-            setSelectedCard((current) => (current === key ? null : key));
-            event.currentTarget.scrollIntoView({
-              behavior: "smooth",
-              block: "nearest",
-              inline: "center",
-            });
-          }}
-        >
-          <span className="open-name">{item.name}</span>
-          <span className="open-value">{String(item.value)}</span>
-        </button>
-      ))}
+      <div
+        className="open-track"
+        style={{ animationDuration: `${durationSeconds}s` }}
+      >
+        {loop.map((item, index) => {
+          const key = `${item.participantId}-${item.createdAt}`;
+          const selected = selectedCard === key;
+          return (
+            <button
+              type="button"
+              className={`open-card ${selected ? "featured selected" : ""}`}
+              key={`${key}-${index}`}
+              aria-pressed={selected}
+              onClick={() =>
+                setSelectedCard((current) => (current === key ? null : key))
+              }
+            >
+              <span className="open-name">{item.name}</span>
+              <span className="open-value">{String(item.value)}</span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

@@ -714,16 +714,40 @@ button {
 }
 
 .open-grid {
-  display: flex;
+  display: block;
   min-width: 0;
+  overflow: hidden;
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 4%,
+    #000 96%,
+    transparent 100%
+  );
+}
+
+.open-track {
+  display: flex;
+  width: max-content;
   gap: 0.85rem;
-  align-items: center;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scroll-behavior: smooth;
-  scroll-snap-type: x mandatory;
-  scrollbar-color: var(--muted) transparent;
-  scrollbar-width: thin;
+  align-items: stretch;
+  animation-name: open-marquee;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  will-change: transform;
+}
+
+.open-grid.is-paused .open-track {
+  animation-play-state: paused;
+}
+
+@keyframes open-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
 }
 
 .open-card {
@@ -733,7 +757,6 @@ button {
   flex-direction: column;
   justify-content: flex-start;
   gap: 0.4rem;
-  scroll-snap-align: center;
   appearance: none;
   border: 1px solid var(--line);
   border-radius: 16px;
@@ -745,7 +768,6 @@ button {
   line-height: 1.35;
   text-align: left;
   cursor: pointer;
-  animation: rise 400ms ease;
   transition:
     border-color 180ms ease,
     box-shadow 220ms ease,
@@ -796,6 +818,12 @@ button {
   font-size: clamp(0.95rem, 1.35vw, 1.25rem);
   line-height: 1.25;
   word-break: break-word;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .open-track {
+    animation: none;
+  }
 }
 
 .feed-ticker {
@@ -1664,8 +1692,7 @@ button {
 
   .open-grid {
     max-height: none;
-    overflow-x: auto;
-    overflow-y: hidden;
+    overflow: hidden;
   }
 
   .open-card {
